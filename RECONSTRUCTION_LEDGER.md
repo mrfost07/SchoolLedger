@@ -190,3 +190,22 @@ Not a reconstruction obligation — the student-facing app built on the audited 
 | Screens | sign-in (+inline MFA), home, enroll (grid + batch reserve/waitlist/drop), schedule, grades, assessment, documents (+detail/step-up download), holds, account (TOTP, session revocation) | build route table (incl. 4 session handlers) |
 | End-to-end | `scripts/dev-walkthrough.ps1` (sections A–N) + `scripts/dev-parallel-refresh.mjs`, through the :5173 origin against embedded PG/Redis (`scripts/dev-run.ts`) | 84/0 checks green: session custody, all 8 portal pages, reserve batch + idempotent replay, prereq block, drop/re-reserve, waitlist rejection, COR + CERT_GRADES full cycles (PDF bytes, public verify), TOR role gate (403 `FORBIDDEN`), TOTP enable → step-up → elevated token, hold-gated official download (BSL-007), refresh reuse → family revoked, MFA-required re-login, logout. Mutex proof: concurrent same-cookie refreshes → both 200, one rotation, family intact |
 | E2E-caught fixes | step-up now adopts the elevated access token (`use-auth.tsx` `stepUp` → `applyTokens`); student request desk no longer offers `TOR_OFFICIAL` (`REQUESTABLE_DOCUMENT_TYPES`) and the official-doc copy describes the clearance-hold gate instead of a student step-up that cannot occur | gates + walkthrough re-run after both fixes |
+
+---
+
+## 10. Phase 0 — ground truth & design lock (multi-tenant SIS program)
+
+| Item | Artifact | Verification |
+| --- | --- | --- |
+| Version control baseline | `git init` (branch `main`), `.gitattributes` (LF for code, CRLF for scripts), tag `phase-0-baseline` @ `a447288` | `git log`/`git tag`; no secrets or runtime state committed (`.dev-runtime.json`, `.dev-logs/`, `storage/`, `.next/` ignored) |
+| CI skeleton | `.github/workflows/ci.yml` — backend job (npm ci, prisma generate, typecheck, **OpenAPI drift check**, vitest, build) + frontend job (**generated schema drift check**, typecheck, lint, vitest, build) | authored; runs in GitHub CI once a remote is added (no Docker locally — container smoke lands in CI per ADR-0007) |
+| Toolchain | Node bumped 22.11 → **24.22.0** via nvm4w; REA `rea-agents@6.5.0` installed (browser capture + inspect + screenshot verified against localhost and public demos) | `rea doctor` (node/host healthy); capture evidence under `tools/reference/scenarios/` (gitignored) |
+| Reference teardown | 4 OSS SIS studied at pinned commits (Gibbon v31 `65f86bf`, openSIS CE 9.3 `5d546f2`, Fedena `68a84ac`, OpenEduCat Odoo 19 `46a5d7d`) — read-only, GPL/LGPL = ideas only; notes in `docs/teardown-notes/*` | sub-agent studies cross-checked in `docs/sis-teardown.md` |
+| Public demo captures | EduPro CMS demo (vendor-published demo accounts, 2026-10-17): teacher + student dashboard IA + screenshots via REA | `docs/teardown-evidence/*.png`, scenario JSON evidence |
+| Design lock docs | `docs/sis-teardown.md` (doctrine, workflow patterns, anti-patterns), `docs/institution-modes.md` (HE vs K-12 matrix) | review checkpoint before Phase 1a |
+| ADRs | `docs/adr/0001`–`0007`: multi-tenancy (RLS+`schoolId`), identity (membership+roles-as-data), academic structure (year/term rows, catalog/offering/membership, dated placement), audit/permissions (per-school chains, permission registry, maker-checker), notifications (outbox), payments (ledger-first, installments=100%), self-hosted packaging (`DEPLOYMENT_MODE`, compose, licensing deferred) | accepted Phase 0 |
+
+**Next:** Phase 1a — tenant foundations (School/Membership/RoleAssignment/SchoolPolicy,
+`schoolId` + RLS on all tenant tables, per-school audit chains, permission registry +
+policy-coverage test, two-school seeds, cross-tenant IDOR suite), keeping the 84-check
+walkthrough green with School #1 = current seed.
