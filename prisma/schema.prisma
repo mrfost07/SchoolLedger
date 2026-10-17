@@ -1,0 +1,676 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Student Portal Backend — SIS schema
+// Hard DB invariants (btree_gist EXCLUDE, immutability triggers, partial uniques,
+// CHECK constraints) live in prisma/migrations/0002_hardening/migration.sql
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════ IAM ═════════════════════════════════════════
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  PROGRAM_CHAIR
+  REGISTRAR
+  CASHIER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+enum HoldType {
+  FINANCIAL
+  DISCIPLINARY
+  DOCUMENTARY
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  roles        Role[]
+  status       UserStatus @default(ACTIVE)
+
+  totpSecret    String?
+  totpEnabledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile      StudentProfile?
+  holds        StudentHold[]
+  scholarships Scholarship[]
+
+  sectionsTaught Section[]         @relation("SectionInstructor")
+  schedules      SectionSchedule[] @relation("ScheduleInstructor")
+
+  enrollments      Enrollment[]
+  ledgerEntries    GradeLedgerEntry[] @relation("StudentEntries")
+  sheetsSubmitted  GradeSheet[]       @relation("SheetSubmittedBy")
+  sheetsVerified   GradeSheet[]       @relation("SheetVerifiedBy")
+  sheetsPosted     GradeSheet[]       @relation("SheetPostedBy")
+  rectifications   GradeRectification[] @relation("RectificationRequestedBy")
+  rectifEndorsed   GradeRectification[] @relation("RectificationEndorsedBy")
+  rectifApproved   GradeRectification[] @relation("RectificationApprovedBy")
+
+  documentRequests DocumentRequest[]       @relation("DocumentStudent")
+  documentsOrdered DocumentRequest[]       @relation("DocumentRequestedBy")
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id            String  @id @default(uuid()) @db.Uuid
+  userId        String  @unique @db.Uuid
+  studentNo     String  @unique
+  yearLevel     Int     @default(1)
+  programId     String  @db.Uuid
+  curriculumVersionId String @db.Uuid
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program           Program           @relation(fields: [programId], references: [id])
+  curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("student_profiles")
+}
+
+model StudentHold {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @db.Uuid
+  type      HoldType
+  reason    String
+  startsAt  DateTime @default(now())
+  endsAt    DateTime?
+  liftedAt  DateTime?
+  createdBy String?  @db.Uuid
+
+  createdAt DateTime @default(now())
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, type])
+  @@map("student_holds")
+}
+
+// ═══════════════════════════════ Audit ═══════════════════════════════════════
+
+model AuditLog {
+  id           BigInt   @id @default(autoincrement())
+  actorId      String?  @db.Uuid
+  action       String
+  resourceType String
+  resourceId   String?
+  payload      Json
+  prevHash     String
+  entryHash    String   @unique
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([resourceType, resourceId])
+  @@index([actorId])
+  @@map("audit_logs")
+}
+
+model IdempotencyKey {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @db.Uuid
+  key          String
+  route        String
+  requestHash  String
+  state        String   @default("IN_PROGRESS") // IN_PROGRESS | COMPLETED
+  statusCode   Int?
+  responseJson Json?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+// ═══════════════════════════════ Academics ═══════════════════════════════════
+
+enum CurriculumStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum RequisiteType {
+  PREREQUISITE
+  COREQUISITE
+  CONCURRENT
+}
+
+enum TermStatus {
+  PLANNING
+  ENROLLMENT
+  ADD_DROP
+  ONGOING
+  GRADING
+  CLOSED
+}
+
+enum SectionStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+model Department {
+  id        String    @id @default(uuid()) @db.Uuid
+  code      String    @unique
+  name      String
+  programs  Program[]
+  createdAt DateTime  @default(now())
+
+  @@map("departments")
+}
+
+model Program {
+  id           String        @id @default(uuid()) @db.Uuid
+  code         String        @unique
+  name         String
+  degreeTitle  String
+  departmentId String        @db.Uuid
+
+  department  Department          @relation(fields: [departmentId], references: [id])
+  curricula   CurriculumVersion[]
+  profiles    StudentProfile[]
+  fees        FeeDefinition[]
+
+  createdAt DateTime @default(now())
+
+  @@map("programs")
+}
+
+model CurriculumVersion {
+  id            String           @id @default(uuid()) @db.Uuid
+  programId     String           @db.Uuid
+  version       String
+  name          String
+  unitsRequired Int
+  status        CurriculumStatus @default(DRAFT)
+  effectiveFrom DateTime?
+
+  program   Program            @relation(fields: [programId], references: [id])
+  courses   CurriculumCourse[]
+  profiles  StudentProfile[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([programId, version])
+  @@map("curriculum_versions")
+}
+
+model Course {
+  id           String @id @default(uuid()) @db.Uuid
+  code         String @unique
+  title        String
+  lectureUnits Int
+  labUnits     Int    @default(0)
+  description  String?
+
+  curriculumEntries CurriculumCourse[]
+  requisitesAsCourse   CourseRequisite[] @relation("RequisiteCourse")
+  requisitesAsRequired CourseRequisite[] @relation("RequisiteRequired")
+  sections        Section[]
+  feeDefinitions  FeeDefinition[]
+  ledgerEntries   GradeLedgerEntry[]
+
+  createdAt DateTime @default(now())
+
+  @@map("courses")
+}
+
+model CurriculumCourse {
+  id                  String @id @default(uuid()) @db.Uuid
+  curriculumVersionId String @db.Uuid
+  courseId            String @db.Uuid
+  yearLevel           Int
+  termNo              Int
+  isRequired          Boolean @default(true)
+
+  curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
+  course            Course            @relation(fields: [courseId], references: [id])
+
+  @@unique([curriculumVersionId, courseId])
+  @@index([curriculumVersionId, yearLevel, termNo])
+  @@map("curriculum_courses")
+}
+
+model CourseRequisite {
+  id              String        @id @default(uuid()) @db.Uuid
+  courseId        String        @db.Uuid
+  requiredCourseId String       @db.Uuid
+  type            RequisiteType
+  minGrade        Decimal?      @db.Decimal(3, 2)
+
+  course         Course @relation("RequisiteCourse", fields: [courseId], references: [id], onDelete: Cascade)
+  requiredCourse Course @relation("RequisiteRequired", fields: [requiredCourseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, requiredCourseId, type])
+  @@index([requiredCourseId])
+  @@map("course_requisites")
+}
+
+model AcademicTerm {
+  id            String     @id @default(uuid()) @db.Uuid
+  code          String     @unique
+  schoolYear    Int
+  termNo        Int
+  status        TermStatus @default(PLANNING)
+
+  startsAt          DateTime
+  endsAt            DateTime
+  enrollmentStartAt DateTime
+  addDropEndAt      DateTime
+  gradingStartAt    DateTime
+  gradingEndAt      DateTime
+
+  sections         Section[]
+  schedules        SectionSchedule[]
+  enrollments      Enrollment[]
+  sheets           GradeSheet[]
+  ledgerEntries    GradeLedgerEntry[]
+  documentRequests DocumentRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolYear, termNo])
+  @@map("academic_terms")
+}
+
+model Room {
+  id       String @id @default(uuid()) @db.Uuid
+  code     String @unique
+  building String
+  capacity Int
+
+  schedules SectionSchedule[]
+
+  @@map("rooms")
+}
+
+model Section {
+  id           String        @id @default(uuid()) @db.Uuid
+  termId       String        @db.Uuid
+  courseId     String        @db.Uuid
+  sectionCode  String
+  instructorId String?       @db.Uuid
+  maxCapacity  Int
+  enrolledCount Int          @default(0)
+  waitlistCount Int          @default(0)
+  status       SectionStatus @default(OPEN)
+
+  term       AcademicTerm       @relation(fields: [termId], references: [id])
+  course     Course             @relation(fields: [courseId], references: [id])
+  instructor User?              @relation("SectionInstructor", fields: [instructorId], references: [id])
+  schedules  SectionSchedule[]
+
+  items        EnrollmentItem[]
+  sheet        GradeSheet?
+  ledgerEntries GradeLedgerEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([termId, courseId, sectionCode])
+  @@index([termId])
+  @@index([instructorId])
+  @@map("sections")
+}
+
+model SectionSchedule {
+  id           String @id @default(uuid()) @db.Uuid
+  sectionId    String @db.Uuid
+  // Denormalized bookkeeping columns: required by btree_gist EXCLUDE constraints
+  // (room double-booking / instructor double-booking) and kept in sync by services.
+  termId       String @db.Uuid
+  instructorId String @db.Uuid
+  roomId       String @db.Uuid
+  dayOfWeek    Int // 1 = Monday … 7 = Sunday
+  startMin     Int // minutes from midnight
+  endMin       Int // minutes from midnight, exclusive
+
+  section    Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  term       AcademicTerm @relation(fields: [termId], references: [id])
+  instructor User         @relation("ScheduleInstructor", fields: [instructorId], references: [id])
+  room       Room         @relation(fields: [roomId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([sectionId])
+  @@index([termId, roomId])
+  @@index([termId, instructorId])
+  @@map("section_schedules")
+}
+
+// ═══════════════════════════════ Enrollment ══════════════════════════════════
+
+enum EnrollmentStatus {
+  ENROLLED
+  DROPPED
+  CANCELLED
+}
+
+enum EnrollmentItemStatus {
+  ENROLLED
+  WAITLISTED
+  DROPPED
+}
+
+enum AssessmentStatus {
+  ASSESSED
+  PAID
+  VOID
+}
+
+enum FeeCategory {
+  TUITION
+  LAB
+  MISC
+  OTHER
+}
+
+model Enrollment {
+  id        String           @id @default(uuid()) @db.Uuid
+  studentId String           @db.Uuid
+  termId    String           @db.Uuid
+  status    EnrollmentStatus @default(ENROLLED)
+
+  student User         @relation(fields: [studentId], references: [id])
+  term    AcademicTerm @relation(fields: [termId], references: [id])
+  items   EnrollmentItem[]
+  assessment TuitionAssessment?
+
+  createdAt   DateTime  @default(now())
+  confirmedAt DateTime?
+
+  @@unique([studentId, termId])
+  @@index([termId, status])
+  @@map("enrollments")
+}
+
+model EnrollmentItem {
+  id           String              @id @default(uuid()) @db.Uuid
+  enrollmentId String              @db.Uuid
+  sectionId    String              @db.Uuid
+  status       EnrollmentItemStatus
+  unitsAtReservation Decimal       @db.Decimal(4, 1)
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  section    Section    @relation(fields: [sectionId], references: [id])
+
+  createdAt  DateTime  @default(now())
+  enrolledAt DateTime?
+  droppedAt  DateTime?
+
+  @@index([enrollmentId, sectionId])
+  @@index([sectionId, status, createdAt])
+  @@map("enrollment_items")
+}
+
+model FeeDefinition {
+  id         String      @id @default(uuid()) @db.Uuid
+  code       String      @unique
+  name       String
+  category   FeeCategory
+  amount     Decimal     @db.Decimal(10, 2)
+  perUnit    Boolean     @default(false)
+  programId  String?     @db.Uuid
+  courseId   String?     @db.Uuid
+  activeFrom DateTime    @default(now())
+  activeTo   DateTime?
+
+  program Program? @relation(fields: [programId], references: [id])
+  course  Course?  @relation(fields: [courseId], references: [id])
+
+  @@map("fee_definitions")
+}
+
+model Scholarship {
+  id              String   @id @default(uuid()) @db.Uuid
+  studentId       String   @db.Uuid
+  code            String
+  name            String
+  discountPercent Decimal  @db.Decimal(5, 2)
+  activeFrom      DateTime @default(now())
+  activeTo        DateTime?
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, code])
+  @@map("scholarships")
+}
+
+model TuitionAssessment {
+  id           String           @id @default(uuid()) @db.Uuid
+  enrollmentId String           @unique @db.Uuid
+  status       AssessmentStatus @default(ASSESSED)
+  currency     String           @default("PHP")
+  breakdown    Json
+  totalAmount  Decimal          @db.Decimal(12, 2)
+  snapshotHash String
+  computedAt   DateTime         @default(now())
+  paidAt       DateTime?
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@map("tuition_assessments")
+}
+
+// ═══════════════════════════════ Grading ═════════════════════════════════════
+
+enum GradeSheetStatus {
+  DRAFT
+  SUBMITTED
+  VERIFIED
+  POSTED
+}
+
+enum GradeEntryStatus {
+  DRAFT
+  SUBMITTED
+  VERIFIED
+  POSTED
+  SUPERSEDED
+}
+
+enum RectificationStatus {
+  PENDING
+  CHAIR_ENDORSED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model GradeSheet {
+  id       String           @id @default(uuid()) @db.Uuid
+  sectionId String          @unique @db.Uuid
+  termId   String           @db.Uuid
+  status   GradeSheetStatus @default(DRAFT)
+
+  submittedById String? @db.Uuid
+  verifiedById  String? @db.Uuid
+  postedById    String? @db.Uuid
+
+  section       Section  @relation(fields: [sectionId], references: [id])
+  term          AcademicTerm @relation(fields: [termId], references: [id])
+  submittedUser User?    @relation("SheetSubmittedBy", fields: [submittedById], references: [id])
+  verifiedUser  User?    @relation("SheetVerifiedBy", fields: [verifiedById], references: [id])
+  postedUser    User?    @relation("SheetPostedBy", fields: [postedById], references: [id])
+  entries       GradeLedgerEntry[]
+
+  submittedAt DateTime?
+  verifiedAt  DateTime?
+  postedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([termId, status])
+  @@map("grade_sheets")
+}
+
+model GradeLedgerEntry {
+  id        String           @id @default(uuid()) @db.Uuid
+  studentId String           @db.Uuid
+  courseId  String           @db.Uuid
+  termId    String           @db.Uuid
+  sectionId String           @db.Uuid
+  sheetId   String           @db.Uuid
+  status    GradeEntryStatus @default(DRAFT)
+  version   Int              @default(1)
+
+  value       Decimal? @db.Decimal(3, 2)
+  isInc       Boolean  @default(false)
+  incDeadlineAt DateTime?
+
+  prevEntryId String? @db.Uuid
+  prevHash    String?
+  entryHash   String?  @unique
+
+  rectificationId String? @db.Uuid
+
+  student User         @relation("StudentEntries", fields: [studentId], references: [id])
+  course  Course       @relation(fields: [courseId], references: [id])
+  term    AcademicTerm @relation(fields: [termId], references: [id])
+  section Section      @relation(fields: [sectionId], references: [id])
+  sheet   GradeSheet   @relation(fields: [sheetId], references: [id])
+
+  prevEntry     GradeLedgerEntry?  @relation("EntryVersion", fields: [prevEntryId], references: [id])
+  nextEntries   GradeLedgerEntry[] @relation("EntryVersion")
+  rectification GradeRectification? @relation("RectificationResult", fields: [rectificationId], references: [id])
+  rectificationTargets GradeRectification[] @relation("RectificationTarget")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId, termId])
+  @@index([studentId, courseId, status])
+  @@index([sheetId])
+  @@index([sectionId])
+  @@map("grade_ledger_entries")
+}
+
+model GradeRectification {
+  id            String              @id @default(uuid()) @db.Uuid
+  targetEntryId String              @db.Uuid
+  status        RectificationStatus @default(PENDING)
+  reason        String
+  proposedValue Decimal?            @db.Decimal(3, 2)
+  proposedIsInc Boolean             @default(false)
+
+  requestedById String @db.Uuid
+  endorsedById  String? @db.Uuid
+  approvedById  String? @db.Uuid
+
+  requestedBy User  @relation("RectificationRequestedBy", fields: [requestedById], references: [id])
+  endorsedBy  User? @relation("RectificationEndorsedBy", fields: [endorsedById], references: [id])
+  approvedBy  User? @relation("RectificationApprovedBy", fields: [approvedById], references: [id])
+
+  targetEntry GradeLedgerEntry   @relation("RectificationTarget", fields: [targetEntryId], references: [id])
+  resultEntries GradeLedgerEntry[] @relation("RectificationResult")
+
+  createdAt  DateTime  @default(now())
+  decidedAt  DateTime?
+  decisionNote String?
+
+  @@index([targetEntryId, status])
+  @@index([status])
+  @@map("grade_rectifications")
+}
+
+// ═══════════════════════════════ Documents ═══════════════════════════════════
+
+enum DocumentType {
+  COR
+  GRADE_SLIP
+  TOR_UNOFFICIAL
+  TOR_OFFICIAL
+  CERT_GRADES
+  CERT_GOOD_MORAL
+  CERT_ENROLLMENT
+}
+
+enum DocumentStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+  EXPIRED
+  REVOKED
+}
+
+model DocumentRequest {
+  id        String         @id @default(uuid()) @db.Uuid
+  studentId String         @db.Uuid
+  type      DocumentType
+  termId    String?        @db.Uuid
+  status    DocumentStatus @default(QUEUED)
+
+  requestedById String? @db.Uuid
+
+  serialNo   String? @unique
+  serialHash String? @unique
+  snapshot   Json?
+  snapshotHash String?
+  signature  String?
+
+  storageKey String?
+  fileSize   Int?
+  pageCount  Int?
+
+  downloadCount Int      @default(0)
+  failureReason String?
+
+  requestedAt DateTime  @default(now())
+  processingAt DateTime?
+  readyAt    DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+
+  student     User          @relation("DocumentStudent", fields: [studentId], references: [id])
+  requestedBy User?         @relation("DocumentRequestedBy", fields: [requestedById], references: [id])
+  term        AcademicTerm? @relation(fields: [termId], references: [id])
+  events      DocumentDownloadEvent[]
+
+  @@index([studentId, type])
+  @@index([status])
+  @@map("document_requests")
+}
+
+model DocumentDownloadEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  documentId String   @db.Uuid
+  actorId    String?  @db.Uuid
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  document DocumentRequest @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+  @@map("document_download_events")
+}

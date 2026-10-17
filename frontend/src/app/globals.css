@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f1f4f2;
+  --color-surface: #ffffff;
+  --color-ink: #1e2a38;
+  --color-ink-soft: #4e5d6b;
+  --color-rule: #c8d2ce;
+  --color-signal: #f2b705;
+  --color-stamp: #b3261e;
+  --color-ledger: #2f7b5a;
+  --color-manila: #e8dcc4;
+
+  --text-micro: 0.75rem;
+  --text-micro--line-height: 1rem;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.125rem;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.4375rem;
+  --text-body-lg: 1.0625rem;
+  --text-body-lg--line-height: 1.625rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.625rem;
+  --text-display-3: 1.625rem;
+  --text-display-3--line-height: 1.875rem;
+  --text-display-2: 2.125rem;
+  --text-display-2--line-height: 2.375rem;
+  --text-display-1: clamp(2.5rem, 5vw, 3.5rem);
+  --text-display-1--line-height: 1.08;
+}
+
+@theme inline {
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+  }
+
+  ::selection {
+    background: var(--color-signal);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility figure {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@utility hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--color-ink) 80%, transparent) 0 2px,
+    transparent 2px 6px
+  );
+}
+
+@utility rule-y {
+  border-top: 1px solid var(--color-rule);
+}
+
+@keyframes sp-pulse {
+  0% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-stamp) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@utility pulse-once {
+  animation: sp-pulse 600ms ease-out 1;
+}

@@ -1,0 +1,29 @@
+node_modules/
+dist/
+coverage/
+.tmp/
+storage/
+*.log
+install.out.log
+install.err.log
+.env
+.env.local
+.DS_Store
+Thumbs.db
+prisma/dev.db
+
+# dev runtime state (embedded infra ports + dev secrets)
+.dev-runtime.json
+.dev-logs/
+
+# Next.js / Turbopack
+.next/
+.turbo/
+*.tsbuildinfo
+
+# reference SIS codebases cloned for research (Phase 0 teardown)
+tools/reference/
+
+# Playwright
+test-results/
+playwright-report/
