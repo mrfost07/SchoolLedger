@@ -7,6 +7,8 @@ export interface JwtPayload {
   sub: string;
   typ: TokenKind;
   sid?: string;
+  /** School the token is scoped to (active membership at issuance). */
+  schoolId?: string;
   roles?: string[];
   mfa?: boolean;
   mfaAt?: number;

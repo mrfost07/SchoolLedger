@@ -6,9 +6,12 @@ import type { PrismaClient } from '@prisma/client';
 import type Redis from 'ioredis';
 
 export interface TestInfra {
+  /** Raw admin client (owner role): fixtures, assertions, resets. Bypasses the tenant extension. */
   prisma: PrismaClient;
   redis: Redis;
   databaseUrl: string;
+  /** RLS-enforced connection string (`schoolledger_app` role) for isolation probes. */
+  appDatabaseUrl: string;
   storageDir: string;
   resetDatabase(): Promise<void>;
 }
@@ -73,6 +76,9 @@ async function start(): Promise<TestInfra> {
   step('connecting prisma client');
 
   const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+  // The migration creates `schoolledger_app` without a password; credentials
+  // are environment-provisioned (embedded-postgres uses pg_hba `password`).
+  await prisma.$executeRawUnsafe(`ALTER ROLE "schoolledger_app" WITH PASSWORD 'schoolledger_app'`);
   await prisma.$queryRaw`SELECT 1`;
   step('infra ready');
 
@@ -90,6 +96,7 @@ async function start(): Promise<TestInfra> {
     prisma,
     redis,
     databaseUrl,
+    appDatabaseUrl: `postgresql://schoolledger_app:schoolledger_app@localhost:${PG_PORT}/schoolledger_test`,
     storageDir,
     async resetDatabase(): Promise<void> {
       const tables = await prisma.$queryRawUnsafe<Array<{ tablename: string }>>(

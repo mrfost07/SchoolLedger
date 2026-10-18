@@ -3,6 +3,7 @@ import type { GradeEntryStatus, GradeLedgerEntry, GradeSheet, PrismaClient } fro
 import type { Env } from '../../config/env';
 import type { Clock } from '../../core/time/clock';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import { requireTenantSchoolId } from '../../core/tenant/context';
 import { addDays } from '../../core/time/clock';
 import type { AuditService } from '../audit/audit.service';
 import type { SectionAccessService } from '../academics/guards';
@@ -59,6 +60,7 @@ export class GradingService {
   // ── Sheet lifecycle (BSL-302) ──────────────────────────────────────────────
 
   async upsertDraftEntries(actorId: string, sectionId: string, entries: GradeEntryInput[]): Promise<GradeSheet & { entries: GradeLedgerEntry[] }> {
+    const schoolId = requireTenantSchoolId();
     const section = await this.sectionAccess.assertInstructorCanGrade(actorId, sectionId);
 
     const enrolledItems = await this.prisma.enrollmentItem.findMany({
@@ -78,7 +80,7 @@ export class GradingService {
       let sheet = await tx.gradeSheet.findUnique({ where: { sectionId } });
       if (!sheet) {
         sheet = await tx.gradeSheet.create({
-          data: { sectionId, termId: section.termId, status: 'DRAFT' },
+          data: { schoolId, sectionId, termId: section.termId, status: 'DRAFT' },
         });
       }
       if (sheet.status !== 'DRAFT') {
@@ -99,6 +101,7 @@ export class GradingService {
         } else {
           await tx.gradeLedgerEntry.create({
             data: {
+              schoolId,
               studentId: entry.studentId,
               courseId: section.courseId,
               termId: section.termId,

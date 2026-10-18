@@ -49,6 +49,16 @@ async function main(): Promise<void> {
     stdio: 'inherit',
   });
 
+  // The RLS-enforced app role is created by migration 0003 without a password
+  // (credentials are environment-provisioned, not committed).
+  console.log('[dev-infra] provisioning schoolledger_app credentials…');
+  execFileSync(process.execPath, [prismaCli, 'db', 'execute', '--stdin', '--url', databaseUrl], {
+    input: `ALTER ROLE "schoolledger_app" WITH PASSWORD 'schoolledger_app';`,
+    env: { ...process.env, PGCLIENTENCODING: 'UTF8' },
+    stdio: ['pipe', 'inherit', 'inherit'],
+  });
+  const appDatabaseUrl = `postgresql://schoolledger_app:schoolledger_app@localhost:${PG_PORT}/${DB_NAME}`;
+
   console.log('[dev-infra] booting redis…');
   const rms = await RedisMemoryServer.create();
   const redisHost = await rms.getHost();
@@ -72,7 +82,7 @@ async function main(): Promise<void> {
   const runtimeFile = join(process.cwd(), '.dev-runtime.json');
   writeFileSync(
     runtimeFile,
-    JSON.stringify({ databaseUrl, redisUrl, secrets: DEV_SECRETS }, null, 2),
+    JSON.stringify({ databaseUrl, appDatabaseUrl, redisUrl, secrets: DEV_SECRETS }, null, 2),
     'utf8',
   );
 

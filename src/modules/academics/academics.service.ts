@@ -12,6 +12,7 @@ import type {
 } from '@prisma/client';
 import type { AuditService } from '../audit/audit.service';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import { requireTenantSchoolId } from '../../core/tenant/context';
 import { assertRequisiteGraphValid, topologicalOrder, unlockCounts, type RequisiteEdge } from './dag';
 import {
   findScheduleConflicts,
@@ -73,8 +74,9 @@ export class AcademicsService {
   // ── Structure ──────────────────────────────────────────────────────────────
 
   async createDepartment(actorId: string, input: { code: string; name: string }): Promise<Department> {
+    const schoolId = requireTenantSchoolId();
     return this.prisma.$transaction(async (tx) => {
-      const department = await tx.department.create({ data: input });
+      const department = await tx.department.create({ data: { ...input, schoolId } });
       await this.audit.append(tx, {
         actorId,
         action: 'academics.department.created',
@@ -87,8 +89,9 @@ export class AcademicsService {
   }
 
   async createProgram(actorId: string, input: { code: string; name: string; degreeTitle: string; departmentId: string }): Promise<Program> {
+    const schoolId = requireTenantSchoolId();
     return this.prisma.$transaction(async (tx) => {
-      const program = await tx.program.create({ data: input });
+      const program = await tx.program.create({ data: { ...input, schoolId } });
       await this.audit.append(tx, {
         actorId,
         action: 'academics.program.created',
@@ -104,9 +107,10 @@ export class AcademicsService {
     actorId: string,
     input: { programId: string; version: string; name: string; unitsRequired: number; effectiveFrom?: Date },
   ): Promise<CurriculumVersion> {
+    const schoolId = requireTenantSchoolId();
     return this.prisma.$transaction(async (tx) => {
       const curriculum = await tx.curriculumVersion.create({
-        data: { ...input, effectiveFrom: input.effectiveFrom ?? null },
+        data: { ...input, schoolId, effectiveFrom: input.effectiveFrom ?? null },
       });
       await this.audit.append(tx, {
         actorId,
@@ -143,9 +147,11 @@ export class AcademicsService {
     actorId: string,
     input: { code: string; title: string; lectureUnits: number; labUnits?: number; description?: string },
   ): Promise<Course> {
+    const schoolId = requireTenantSchoolId();
     return this.prisma.$transaction(async (tx) => {
       const course = await tx.course.create({
         data: {
+          schoolId,
           code: input.code,
           title: input.title,
           lectureUnits: input.lectureUnits,
@@ -169,12 +175,14 @@ export class AcademicsService {
     curriculumVersionId: string,
     input: { courseId: string; yearLevel: number; termNo: number; isRequired?: boolean },
   ) {
+    const schoolId = requireTenantSchoolId();
     return this.prisma.$transaction(async (tx) => {
       const curriculum = await tx.curriculumVersion.findUnique({ where: { id: curriculumVersionId } });
       if (!curriculum) throw new AppError(ErrorCodes.NOT_FOUND, 'Curriculum version not found.');
       if (curriculum.status === 'ARCHIVED') throw new AppError(ErrorCodes.CONFLICT, 'Archived curricula are immutable.');
       const entry = await tx.curriculumCourse.create({
         data: {
+          schoolId,
           curriculumVersionId,
           courseId: input.courseId,
           yearLevel: input.yearLevel,
@@ -224,6 +232,7 @@ export class AcademicsService {
           },
         },
         create: {
+          schoolId: requireTenantSchoolId(),
           courseId: input.courseId,
           requiredCourseId: input.requiredCourseId,
           type: input.type,
@@ -314,7 +323,7 @@ export class AcademicsService {
       throw new AppError(ErrorCodes.VALIDATION_FAILED, 'Term windows are inconsistent (require startsAt < endsAt, enrollmentStartAt ≤ addDropEndAt, gradingStartAt < gradingEndAt).');
     }
     return this.prisma.$transaction(async (tx) => {
-      const term = await tx.academicTerm.create({ data: input });
+      const term = await tx.academicTerm.create({ data: { ...input, schoolId: requireTenantSchoolId() } });
       await this.audit.append(tx, {
         actorId,
         action: 'academics.term.created',
@@ -362,7 +371,7 @@ export class AcademicsService {
 
   async createRoom(actorId: string, input: { code: string; building: string; capacity: number }): Promise<Room> {
     return this.prisma.$transaction(async (tx) => {
-      const room = await tx.room.create({ data: input });
+      const room = await tx.room.create({ data: { ...input, schoolId: requireTenantSchoolId() } });
       await this.audit.append(tx, {
         actorId,
         action: 'academics.room.created',
@@ -436,9 +445,11 @@ export class AcademicsService {
     }
 
     try {
+      const schoolId = requireTenantSchoolId();
       return await this.prisma.$transaction(async (tx) => {
         const section = await tx.section.create({
           data: {
+            schoolId,
             termId: input.termId,
             courseId: input.courseId,
             sectionCode: input.sectionCode,
@@ -449,6 +460,7 @@ export class AcademicsService {
         if (schedules.length > 0) {
           await tx.sectionSchedule.createMany({
             data: schedules.map((schedule) => ({
+              schoolId,
               sectionId: section.id,
               termId: input.termId,
               instructorId: input.instructorId!,
@@ -505,9 +517,11 @@ export class AcademicsService {
     );
 
     try {
+      const schoolId = requireTenantSchoolId();
       return await this.prisma.$transaction(async (tx) => {
         const schedule = await tx.sectionSchedule.create({
           data: {
+            schoolId,
             sectionId,
             termId: section.termId,
             instructorId: section.instructorId!,

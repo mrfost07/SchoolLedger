@@ -7,6 +7,7 @@ import {
   createStudent,
   createUser,
   openTermWindow,
+  TEST_SCHOOL_ID,
   type FixtureBackbone,
 } from '../helpers/fixtures';
 
@@ -173,6 +174,7 @@ describe('enrollment flow', () => {
     const window = openTermWindow(test.clock.now());
     const closedTerm = await test.prisma.academicTerm.create({
       data: {
+        schoolId: backbone.schoolId,
         code: 'TST-CLOSED',
         schoolYear: 2026,
         termNo: 2,
@@ -299,7 +301,7 @@ describe('enrollment flow', () => {
     expect(first.statusCode).toBe(201);
 
     const row = await test.prisma.idempotencyKey.findUniqueOrThrow({
-      where: { userId_key: { userId: erin.id, key } },
+      where: { schoolId_userId_key: { schoolId: TEST_SCHOOL_ID, userId: erin.id, key } },
     });
     expect(row.state).toBe('COMPLETED');
     await test.prisma.idempotencyKey.update({
@@ -320,7 +322,7 @@ describe('enrollment flow', () => {
     expect(afterExpiry.json().code).toBe('ALREADY_ENROLLED');
 
     const recreated = await test.prisma.idempotencyKey.findUnique({
-      where: { userId_key: { userId: erin.id, key } },
+      where: { schoolId_userId_key: { schoolId: TEST_SCHOOL_ID, userId: erin.id, key } },
     });
     expect(recreated).toBeNull();
   });

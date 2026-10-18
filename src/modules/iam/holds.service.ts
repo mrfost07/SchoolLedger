@@ -1,6 +1,7 @@
 import type { HoldType, StudentHold } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import { requireTenantSchoolId } from '../../core/tenant/context';
 import type { AuditService } from '../audit/audit.service';
 import type { Db } from '../../infra/prisma';
 
@@ -63,6 +64,7 @@ export class HoldsService {
     return this.prisma.$transaction(async (tx) => {
       const hold = await tx.studentHold.create({
         data: {
+          schoolId: requireTenantSchoolId(),
           studentId: input.studentId,
           type: input.type,
           reason: input.reason,

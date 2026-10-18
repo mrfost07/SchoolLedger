@@ -1,7 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // SchoolLedger — SIS schema
 // Hard DB invariants (btree_gist EXCLUDE, immutability triggers, partial uniques,
-// CHECK constraints) live in prisma/migrations/0002_hardening/migration.sql
+// CHECK constraints) live in prisma/migrations/0002_hardening/migration.sql.
+// Multi-tenancy (schoolId, RLS policies, per-school chains) lands in
+// prisma/migrations/0003_tenancy/migration.sql.
 // ─────────────────────────────────────────────────────────────────────────────
 
 generator client {
@@ -11,6 +13,149 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════ Tenancy ═════════════════════════════════════
+
+enum SchoolStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum SchoolMode {
+  HE
+  K12
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model School {
+  id        String       @id @default(uuid()) @db.Uuid
+  code      String       @unique
+  name      String
+  status    SchoolStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+
+  policy      SchoolPolicy?
+  memberships Membership[]
+
+  studentProfiles    StudentProfile[]
+  studentHolds       StudentHold[]
+  auditLogs          AuditLog[]
+  idempotencyKeys    IdempotencyKey[]
+  departments        Department[]
+  programs           Program[]
+  curriculumVersions CurriculumVersion[]
+  courses            Course[]
+  curriculumCourses  CurriculumCourse[]
+  courseRequisites   CourseRequisite[]
+  terms              AcademicTerm[]
+  rooms              Room[]
+  sections           Section[]
+  schedules          SectionSchedule[]
+  enrollments        Enrollment[]
+  enrollmentItems    EnrollmentItem[]
+  feeDefinitions     FeeDefinition[]
+  scholarships       Scholarship[]
+  tuitionAssessments TuitionAssessment[]
+  gradeSheets        GradeSheet[]
+  ledgerEntries      GradeLedgerEntry[]
+  rectifications      GradeRectification[]
+  documentRequests   DocumentRequest[]
+  downloadEvents     DocumentDownloadEvent[]
+  roleAssignments    RoleAssignment[]
+
+  @@map("schools")
+}
+
+model SchoolPolicy {
+  schoolId String     @id @db.Uuid
+  mode     SchoolMode @default(HE)
+  timezone String     @default("Asia/Manila")
+  currency String     @default("PHP")
+
+  maxAcademicUnits  Int     @default(30)
+  passingGradeMax   Decimal @default(3.0) @db.Decimal(3, 2)
+  incDefaultGrade   Decimal @default(5.0) @db.Decimal(3, 2)
+  deansListerMaxGwa Decimal @default(1.45) @db.Decimal(3, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@map("school_policies")
+}
+
+model Membership {
+  id        String           @id @default(uuid()) @db.Uuid
+  schoolId  String           @db.Uuid
+  userId    String           @db.Uuid
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments RoleAssignment[]
+
+  @@unique([schoolId, userId])
+  @@index([userId, status])
+  @@map("memberships")
+}
+
+model RoleAssignment {
+  id           String   @id @default(uuid()) @db.Uuid
+  membershipId String   @db.Uuid
+  schoolId     String   @db.Uuid
+  roleCode     String
+  scopeType    String   @default("SCHOOL")
+  scopeId      String?  @db.Uuid
+  createdAt    DateTime @default(now())
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  school     School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, roleCode])
+  @@index([schoolId, roleCode])
+  @@map("role_assignments")
+}
+
+// Permission registry (ADR-0004): permissions are data; routes declare them;
+// role templates grant them per school mode.
+model Permission {
+  code        String @id
+  module      String
+  description String
+
+  templates RoleTemplatePermission[]
+
+  @@map("permissions")
+}
+
+model RoleTemplate {
+  id       String     @id @default(uuid()) @db.Uuid
+  mode     SchoolMode
+  roleCode String
+
+  permissions RoleTemplatePermission[]
+
+  @@unique([mode, roleCode])
+  @@map("role_templates")
+}
+
+model RoleTemplatePermission {
+  templateId     String @db.Uuid
+  permissionCode String
+
+  template   RoleTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  permission Permission   @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+
+  @@id([templateId, permissionCode])
+  @@map("role_template_permissions")
 }
 
 // ═══════════════════════════════ IAM ═════════════════════════════════════════
@@ -51,6 +196,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  memberships  Membership[]
   profile      StudentProfile?
   holds        StudentHold[]
   scholarships Scholarship[]
@@ -75,12 +221,14 @@ model User {
 
 model StudentProfile {
   id            String  @id @default(uuid()) @db.Uuid
+  schoolId      String  @db.Uuid
   userId        String  @unique @db.Uuid
-  studentNo     String  @unique
+  studentNo     String
   yearLevel     Int     @default(1)
   programId     String  @db.Uuid
   curriculumVersionId String @db.Uuid
 
+  school            School            @relation(fields: [schoolId], references: [id])
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   program           Program           @relation(fields: [programId], references: [id])
   curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id])
@@ -88,11 +236,13 @@ model StudentProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([schoolId, studentNo])
   @@map("student_profiles")
 }
 
 model StudentHold {
   id        String   @id @default(uuid()) @db.Uuid
+  schoolId  String   @db.Uuid
   studentId String   @db.Uuid
   type      HoldType
   reason    String
@@ -103,7 +253,8 @@ model StudentHold {
 
   createdAt DateTime @default(now())
 
-  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School @relation(fields: [schoolId], references: [id])
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId, type])
   @@map("student_holds")
@@ -113,6 +264,7 @@ model StudentHold {
 
 model AuditLog {
   id           BigInt   @id @default(autoincrement())
+  schoolId     String?  @db.Uuid
   actorId      String?  @db.Uuid
   action       String
   resourceType String
@@ -122,7 +274,10 @@ model AuditLog {
   entryHash    String   @unique
   createdAt    DateTime @default(now())
 
+  school School? @relation(fields: [schoolId], references: [id])
+
   @@index([createdAt])
+  @@index([schoolId, id])
   @@index([resourceType, resourceId])
   @@index([actorId])
   @@map("audit_logs")
@@ -130,6 +285,7 @@ model AuditLog {
 
 model IdempotencyKey {
   id           String   @id @default(uuid()) @db.Uuid
+  schoolId     String   @db.Uuid
   userId       String?  @db.Uuid
   key          String
   route        String
@@ -140,7 +296,9 @@ model IdempotencyKey {
   createdAt    DateTime @default(now())
   expiresAt    DateTime
 
-  @@unique([userId, key])
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, userId, key])
   @@index([expiresAt])
   @@map("idempotency_keys")
 }
@@ -176,21 +334,27 @@ enum SectionStatus {
 
 model Department {
   id        String    @id @default(uuid()) @db.Uuid
-  code      String    @unique
+  schoolId  String    @db.Uuid
+  code      String
   name      String
   programs  Program[]
   createdAt DateTime  @default(now())
 
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, code])
   @@map("departments")
 }
 
 model Program {
   id           String        @id @default(uuid()) @db.Uuid
-  code         String        @unique
+  schoolId     String        @db.Uuid
+  code         String
   name         String
   degreeTitle  String
   departmentId String        @db.Uuid
 
+  school      School              @relation(fields: [schoolId], references: [id])
   department  Department          @relation(fields: [departmentId], references: [id])
   curricula   CurriculumVersion[]
   profiles    StudentProfile[]
@@ -198,11 +362,13 @@ model Program {
 
   createdAt DateTime @default(now())
 
+  @@unique([schoolId, code])
   @@map("programs")
 }
 
 model CurriculumVersion {
   id            String           @id @default(uuid()) @db.Uuid
+  schoolId      String           @db.Uuid
   programId     String           @db.Uuid
   version       String
   name          String
@@ -210,6 +376,7 @@ model CurriculumVersion {
   status        CurriculumStatus @default(DRAFT)
   effectiveFrom DateTime?
 
+  school    School             @relation(fields: [schoolId], references: [id])
   program   Program            @relation(fields: [programId], references: [id])
   courses   CurriculumCourse[]
   profiles  StudentProfile[]
@@ -222,11 +389,14 @@ model CurriculumVersion {
 
 model Course {
   id           String @id @default(uuid()) @db.Uuid
-  code         String @unique
+  schoolId     String @db.Uuid
+  code         String
   title        String
   lectureUnits Int
   labUnits     Int    @default(0)
   description  String?
+
+  school School @relation(fields: [schoolId], references: [id])
 
   curriculumEntries CurriculumCourse[]
   requisitesAsCourse   CourseRequisite[] @relation("RequisiteCourse")
@@ -237,17 +407,20 @@ model Course {
 
   createdAt DateTime @default(now())
 
+  @@unique([schoolId, code])
   @@map("courses")
 }
 
 model CurriculumCourse {
   id                  String @id @default(uuid()) @db.Uuid
+  schoolId            String @db.Uuid
   curriculumVersionId String @db.Uuid
   courseId            String @db.Uuid
   yearLevel           Int
   termNo              Int
   isRequired          Boolean @default(true)
 
+  school            School            @relation(fields: [schoolId], references: [id])
   curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
   course            Course            @relation(fields: [courseId], references: [id])
 
@@ -258,11 +431,13 @@ model CurriculumCourse {
 
 model CourseRequisite {
   id              String        @id @default(uuid()) @db.Uuid
+  schoolId        String        @db.Uuid
   courseId        String        @db.Uuid
   requiredCourseId String       @db.Uuid
   type            RequisiteType
   minGrade        Decimal?      @db.Decimal(3, 2)
 
+  school         School @relation(fields: [schoolId], references: [id])
   course         Course @relation("RequisiteCourse", fields: [courseId], references: [id], onDelete: Cascade)
   requiredCourse Course @relation("RequisiteRequired", fields: [requiredCourseId], references: [id], onDelete: Cascade)
 
@@ -275,7 +450,8 @@ model CourseRequisite {
 
 model AcademicTerm {
   id            String     @id @default(uuid()) @db.Uuid
-  code          String     @unique
+  schoolId      String     @db.Uuid
+  code          String
   schoolYear    Int
   termNo        Int
   status        TermStatus @default(PLANNING)
@@ -287,6 +463,7 @@ model AcademicTerm {
   gradingStartAt    DateTime
   gradingEndAt      DateTime
 
+  school           School             @relation(fields: [schoolId], references: [id])
   sections         Section[]
   schedules        SectionSchedule[]
   enrollments      Enrollment[]
@@ -297,23 +474,28 @@ model AcademicTerm {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([schoolYear, termNo])
+  @@unique([schoolId, code])
+  @@unique([schoolId, schoolYear, termNo])
   @@map("academic_terms")
 }
 
 model Room {
   id       String @id @default(uuid()) @db.Uuid
-  code     String @unique
+  schoolId String @db.Uuid
+  code     String
   building String
   capacity Int
 
+  school    School            @relation(fields: [schoolId], references: [id])
   schedules SectionSchedule[]
 
+  @@unique([schoolId, code])
   @@map("rooms")
 }
 
 model Section {
   id           String        @id @default(uuid()) @db.Uuid
+  schoolId     String        @db.Uuid
   termId       String        @db.Uuid
   courseId     String        @db.Uuid
   sectionCode  String
@@ -323,6 +505,7 @@ model Section {
   waitlistCount Int          @default(0)
   status       SectionStatus @default(OPEN)
 
+  school     School             @relation(fields: [schoolId], references: [id])
   term       AcademicTerm       @relation(fields: [termId], references: [id])
   course     Course             @relation(fields: [courseId], references: [id])
   instructor User?              @relation("SectionInstructor", fields: [instructorId], references: [id])
@@ -343,6 +526,7 @@ model Section {
 
 model SectionSchedule {
   id           String @id @default(uuid()) @db.Uuid
+  schoolId     String @db.Uuid
   sectionId    String @db.Uuid
   // Denormalized bookkeeping columns: required by btree_gist EXCLUDE constraints
   // (room double-booking / instructor double-booking) and kept in sync by services.
@@ -353,6 +537,7 @@ model SectionSchedule {
   startMin     Int // minutes from midnight
   endMin       Int // minutes from midnight, exclusive
 
+  school     School       @relation(fields: [schoolId], references: [id])
   section    Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   term       AcademicTerm @relation(fields: [termId], references: [id])
   instructor User         @relation("ScheduleInstructor", fields: [instructorId], references: [id])
@@ -395,11 +580,13 @@ enum FeeCategory {
 
 model Enrollment {
   id        String           @id @default(uuid()) @db.Uuid
+  schoolId  String           @db.Uuid
   studentId String           @db.Uuid
   termId    String           @db.Uuid
   status    EnrollmentStatus @default(ENROLLED)
 
-  student User         @relation(fields: [studentId], references: [id])
+  school School       @relation(fields: [schoolId], references: [id])
+  student User        @relation(fields: [studentId], references: [id])
   term    AcademicTerm @relation(fields: [termId], references: [id])
   items   EnrollmentItem[]
   assessment TuitionAssessment?
@@ -414,11 +601,13 @@ model Enrollment {
 
 model EnrollmentItem {
   id           String              @id @default(uuid()) @db.Uuid
+  schoolId     String              @db.Uuid
   enrollmentId String              @db.Uuid
   sectionId    String              @db.Uuid
   status       EnrollmentItemStatus
   unitsAtReservation Decimal       @db.Decimal(4, 1)
 
+  school     School     @relation(fields: [schoolId], references: [id])
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   section    Section    @relation(fields: [sectionId], references: [id])
 
@@ -433,7 +622,8 @@ model EnrollmentItem {
 
 model FeeDefinition {
   id         String      @id @default(uuid()) @db.Uuid
-  code       String      @unique
+  schoolId   String      @db.Uuid
+  code       String
   name       String
   category   FeeCategory
   amount     Decimal     @db.Decimal(10, 2)
@@ -443,14 +633,17 @@ model FeeDefinition {
   activeFrom DateTime    @default(now())
   activeTo   DateTime?
 
-  program Program? @relation(fields: [programId], references: [id])
-  course  Course?  @relation(fields: [courseId], references: [id])
+  school  School    @relation(fields: [schoolId], references: [id])
+  program Program?  @relation(fields: [programId], references: [id])
+  course  Course?   @relation(fields: [courseId], references: [id])
 
+  @@unique([schoolId, code])
   @@map("fee_definitions")
 }
 
 model Scholarship {
   id              String   @id @default(uuid()) @db.Uuid
+  schoolId        String   @db.Uuid
   studentId       String   @db.Uuid
   code            String
   name            String
@@ -458,7 +651,8 @@ model Scholarship {
   activeFrom      DateTime @default(now())
   activeTo        DateTime?
 
-  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School @relation(fields: [schoolId], references: [id])
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, code])
   @@map("scholarships")
@@ -466,6 +660,7 @@ model Scholarship {
 
 model TuitionAssessment {
   id           String           @id @default(uuid()) @db.Uuid
+  schoolId     String           @db.Uuid
   enrollmentId String           @unique @db.Uuid
   status       AssessmentStatus @default(ASSESSED)
   currency     String           @default("PHP")
@@ -475,6 +670,7 @@ model TuitionAssessment {
   computedAt   DateTime         @default(now())
   paidAt       DateTime?
 
+  school     School     @relation(fields: [schoolId], references: [id])
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@map("tuition_assessments")
@@ -507,6 +703,7 @@ enum RectificationStatus {
 
 model GradeSheet {
   id       String           @id @default(uuid()) @db.Uuid
+  schoolId String           @db.Uuid
   sectionId String          @unique @db.Uuid
   termId   String           @db.Uuid
   status   GradeSheetStatus @default(DRAFT)
@@ -515,6 +712,7 @@ model GradeSheet {
   verifiedById  String? @db.Uuid
   postedById    String? @db.Uuid
 
+  school        School   @relation(fields: [schoolId], references: [id])
   section       Section  @relation(fields: [sectionId], references: [id])
   term          AcademicTerm @relation(fields: [termId], references: [id])
   submittedUser User?    @relation("SheetSubmittedBy", fields: [submittedById], references: [id])
@@ -535,6 +733,7 @@ model GradeSheet {
 
 model GradeLedgerEntry {
   id        String           @id @default(uuid()) @db.Uuid
+  schoolId  String           @db.Uuid
   studentId String           @db.Uuid
   courseId  String           @db.Uuid
   termId    String           @db.Uuid
@@ -553,6 +752,7 @@ model GradeLedgerEntry {
 
   rectificationId String? @db.Uuid
 
+  school  School       @relation(fields: [schoolId], references: [id])
   student User         @relation("StudentEntries", fields: [studentId], references: [id])
   course  Course       @relation(fields: [courseId], references: [id])
   term    AcademicTerm @relation(fields: [termId], references: [id])
@@ -576,6 +776,7 @@ model GradeLedgerEntry {
 
 model GradeRectification {
   id            String              @id @default(uuid()) @db.Uuid
+  schoolId      String              @db.Uuid
   targetEntryId String              @db.Uuid
   status        RectificationStatus @default(PENDING)
   reason        String
@@ -586,6 +787,7 @@ model GradeRectification {
   endorsedById  String? @db.Uuid
   approvedById  String? @db.Uuid
 
+  school      School @relation(fields: [schoolId], references: [id])
   requestedBy User  @relation("RectificationRequestedBy", fields: [requestedById], references: [id])
   endorsedBy  User? @relation("RectificationEndorsedBy", fields: [endorsedById], references: [id])
   approvedBy  User? @relation("RectificationApprovedBy", fields: [approvedById], references: [id])
@@ -625,6 +827,7 @@ enum DocumentStatus {
 
 model DocumentRequest {
   id        String         @id @default(uuid()) @db.Uuid
+  schoolId  String         @db.Uuid
   studentId String         @db.Uuid
   type      DocumentType
   termId    String?        @db.Uuid
@@ -632,7 +835,7 @@ model DocumentRequest {
 
   requestedById String? @db.Uuid
 
-  serialNo   String? @unique
+  serialNo   String?
   serialHash String? @unique
   snapshot   Json?
   snapshotHash String?
@@ -651,11 +854,13 @@ model DocumentRequest {
   expiresAt  DateTime?
   revokedAt  DateTime?
 
+  school      School        @relation(fields: [schoolId], references: [id])
   student     User          @relation("DocumentStudent", fields: [studentId], references: [id])
   requestedBy User?         @relation("DocumentRequestedBy", fields: [requestedById], references: [id])
   term        AcademicTerm? @relation(fields: [termId], references: [id])
   events      DocumentDownloadEvent[]
 
+  @@unique([schoolId, serialNo])
   @@index([studentId, type])
   @@index([status])
   @@map("document_requests")
@@ -663,12 +868,14 @@ model DocumentRequest {
 
 model DocumentDownloadEvent {
   id         String   @id @default(uuid()) @db.Uuid
+  schoolId   String   @db.Uuid
   documentId String   @db.Uuid
   actorId    String?  @db.Uuid
   ip         String?
   userAgent  String?
   createdAt  DateTime @default(now())
 
+  school   School          @relation(fields: [schoolId], references: [id])
   document DocumentRequest @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId, createdAt])

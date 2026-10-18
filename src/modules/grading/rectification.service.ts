@@ -2,6 +2,7 @@ import { Decimal } from 'decimal.js';
 import type { GradeRectification, PrismaClient } from '@prisma/client';
 import type { Clock } from '../../core/time/clock';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import { requireTenantSchoolId } from '../../core/tenant/context';
 import type { AuditService } from '../audit/audit.service';
 import { addDays } from '../../core/time/clock';
 import { gradeEntryHash } from './ledger-hash';
@@ -72,6 +73,7 @@ export class RectificationService {
     return this.prisma.$transaction(async (tx) => {
       const rectification = await tx.gradeRectification.create({
         data: {
+          schoolId: requireTenantSchoolId(),
           targetEntryId: input.entryId,
           reason: input.reason,
           proposedValue: input.proposedIsInc ? null : input.proposedValue ?? null,
@@ -148,6 +150,7 @@ export class RectificationService {
       });
       const newEntry = await tx.gradeLedgerEntry.create({
         data: {
+          schoolId: target.schoolId,
           studentId: target.studentId,
           courseId: target.courseId,
           termId: target.termId,

@@ -21,14 +21,15 @@ describe('enrollment concurrency guards (unit cap, drop idempotence)', () => {
 
   it('same-student concurrent reservations across sections respect the unit cap', async () => {
     const heavyA = await test.prisma.course.create({
-      data: { code: 'HEAVY-A', title: 'Heavy A', lectureUnits: 20, labUnits: 0 },
+      data: { schoolId: backbone.schoolId, code: 'HEAVY-A', title: 'Heavy A', lectureUnits: 20, labUnits: 0 },
     });
     const heavyB = await test.prisma.course.create({
-      data: { code: 'HEAVY-B', title: 'Heavy B', lectureUnits: 20, labUnits: 0 },
+      data: { schoolId: backbone.schoolId, code: 'HEAVY-B', title: 'Heavy B', lectureUnits: 20, labUnits: 0 },
     });
     for (const course of [heavyA, heavyB]) {
       await test.prisma.curriculumCourse.create({
         data: {
+          schoolId: backbone.schoolId,
           curriculumVersionId: backbone.curriculum.id,
           courseId: course.id,
           yearLevel: 1,

@@ -1,12 +1,15 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ErrorCodes, AppError } from '../errors/taxonomy';
 import { verifyJwt, type JwtPayload } from '../crypto/jwt';
+import { setTenantSchool } from '../tenant/context';
 import type { Env } from '../../config/env';
 
 export type Role = 'STUDENT' | 'INSTRUCTOR' | 'PROGRAM_CHAIR' | 'REGISTRAR' | 'CASHIER' | 'ADMIN';
 
 export interface AuthUser {
   userId: string;
+  /** Active school membership at token issuance (ADR-0001). */
+  schoolId: string;
   roles: Role[];
   sessionId: string | null;
   /** True when this access token carries a *fresh* step-up MFA elevation. */
@@ -33,14 +36,17 @@ export function bearerToken(request: FastifyRequest): string {
 export function authenticate(request: FastifyRequest, config: Pick<Env, 'jwtAccessSecret'>): AuthUser {
   const payload: JwtPayload = verifyJwt(bearerToken(request), config.jwtAccessSecret, new Date());
   if (payload.typ !== 'access') throw new AppError(ErrorCodes.TOKEN_INVALID, 'Expected an access token');
+  if (!payload.schoolId) throw new AppError(ErrorCodes.TOKEN_INVALID, 'Token is not scoped to a school');
   const auth: AuthUser = {
     userId: payload.sub,
+    schoolId: payload.schoolId,
     roles: (payload.roles ?? []) as Role[],
     sessionId: payload.sid ?? null,
     mfa: payload.mfa === true,
     mfaAt: typeof payload.mfaAt === 'number' ? payload.mfaAt : null,
     tokenId: payload.jti,
   };
+  setTenantSchool(auth.schoolId);
   request.auth = auth;
   return auth;
 }

@@ -3,6 +3,7 @@ import type { GradeLedgerEntry, PrismaClient } from '@prisma/client';
 import type { Env } from '../../config/env';
 import type { Clock } from '../../core/time/clock';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import { runWithTenant } from '../../core/tenant/context';
 import type { AuditService } from '../audit/audit.service';
 import { gradeEntryHash } from './ledger-hash';
 import { validateMark } from './state-machine';
@@ -52,6 +53,7 @@ export class IncLifecycleService {
       });
       const replacement = await tx.gradeLedgerEntry.create({
         data: {
+          schoolId: entry.schoolId,
           studentId: entry.studentId,
           courseId: entry.courseId,
           termId: entry.termId,
@@ -88,7 +90,10 @@ export class IncLifecycleService {
 
     const report: IncSweepReport = { scanned: expired.length, converted: [] };
     for (const entry of expired) {
-      const converted = await this.prisma.$transaction(async (tx) => {
+      // The scan is cross-school (system frame); each conversion runs in the
+      // owning school's frame so audit events land in that school's chain.
+      const converted = await runWithTenant(entry.schoolId, () =>
+        this.prisma.$transaction(async (tx) => {
         const fresh = await tx.gradeLedgerEntry.findUnique({ where: { id: entry.id } });
         if (!fresh || fresh.status !== 'POSTED' || !fresh.isInc) return null;
 
@@ -107,6 +112,7 @@ export class IncLifecycleService {
         });
         const replacement = await tx.gradeLedgerEntry.create({
           data: {
+            schoolId: fresh.schoolId,
             studentId: fresh.studentId,
             courseId: fresh.courseId,
             termId: fresh.termId,
@@ -133,7 +139,8 @@ export class IncLifecycleService {
           },
         });
         return { entryId: fresh.id, studentId: fresh.studentId, courseId: fresh.courseId, newEntryId: replacement.id };
-      });
+      }),
+      );
       if (converted) report.converted.push(converted);
     }
     return report;

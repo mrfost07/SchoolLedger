@@ -10,6 +10,7 @@ import {
   type WaitlistPromotionJob,
 } from './infra/queues';
 import { cleanupExpiredIdempotencyKeys } from './core/http/idempotency';
+import { runWithSystem, runWithTenant } from './core/tenant/context';
 import type { ComposedServices } from './app';
 
 export interface RunningWorkers {
@@ -31,14 +32,16 @@ export async function startWorkers(deps: {
 
   const documentWorker = new Worker<DocumentRenderJob>(
     QUEUE_NAMES.documents,
-    async (job) => deps.services.documentWorker.render(job.data),
+    async (job) => runWithTenant(job.data.schoolId, () => deps.services.documentWorker.render(job.data)),
     { connection, concurrency: 2 },
   );
 
   const waitlistWorker = new Worker<WaitlistPromotionJob>(
     QUEUE_NAMES.waitlist,
     async (job) => {
-      await deps.services.waitlist.promote(job.data.termId, job.data.sectionId);
+      await runWithTenant(job.data.schoolId, () =>
+        deps.services.waitlist.promote(job.data.termId, job.data.sectionId),
+      );
     },
     { connection, concurrency: 4 },
   );
@@ -46,9 +49,11 @@ export async function startWorkers(deps: {
   const incWorker = new Worker<Record<string, never>>(
     QUEUE_NAMES.incSweep,
     async () => {
-      await deps.services.inc.sweepExpired();
-      // Same hourly cadence: reap idempotency keys whose 24h TTL elapsed.
-      await cleanupExpiredIdempotencyKeys(deps.prisma).catch(() => undefined);
+      await runWithSystem(async () => {
+        await deps.services.inc.sweepExpired();
+        // Same hourly cadence: reap idempotency keys whose 24h TTL elapsed.
+        await cleanupExpiredIdempotencyKeys(deps.prisma).catch(() => undefined);
+      });
     },
     { connection, concurrency: 1 },
   );

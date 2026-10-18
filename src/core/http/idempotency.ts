@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import { canonicalJson, sha256Hex } from '../crypto/hash';
 import { AppError, ErrorCodes } from '../errors/taxonomy';
+import { requireTenantSchoolId } from '../tenant/context';
 
 export const IDEMPOTENCY_HEADER = 'idempotency-key';
 const TTL_HOURS = 24;
@@ -41,6 +42,7 @@ export async function withIdempotency<T>(
   }
   const idempotencyKey: string = key;
 
+  const schoolId = requireTenantSchoolId();
   const userId = request.auth?.userId ?? null;
   const route = `${request.method} ${request.routeOptions?.url ?? request.url}`;
   const requestHash = sha256Hex(canonicalJson({ route, body: request.body ?? null }));
@@ -48,11 +50,11 @@ export async function withIdempotency<T>(
 
   try {
     await ctx.prisma.idempotencyKey.create({
-      data: { userId, key, route, requestHash, state: 'IN_PROGRESS', expiresAt },
+      data: { schoolId, userId, key, route, requestHash, state: 'IN_PROGRESS', expiresAt },
     });
   } catch (err) {
     const conflict = await ctx.prisma.idempotencyKey.findUnique({
-      where: { userId_key: { userId: userId as string, key } },
+      where: { schoolId_userId_key: { schoolId, userId: userId as string, key } },
     });
     if (!conflict) throw err;
 
@@ -65,7 +67,7 @@ export async function withIdempotency<T>(
       }
       try {
         await ctx.prisma.idempotencyKey.create({
-          data: { userId, key, route, requestHash, state: 'IN_PROGRESS', expiresAt },
+          data: { schoolId, userId, key, route, requestHash, state: 'IN_PROGRESS', expiresAt },
         });
       } catch {
         throw new AppError(ErrorCodes.IDEMPOTENT_REQUEST_IN_PROGRESS, 'An identical request is already being processed.');
@@ -90,7 +92,7 @@ export async function withIdempotency<T>(
     try {
       const result = await handler();
       await ctx.prisma.idempotencyKey.update({
-        where: { userId_key: { userId: userId as string, key: idempotencyKey } },
+        where: { schoolId_userId_key: { schoolId, userId: userId as string, key: idempotencyKey } },
         data: {
           state: 'COMPLETED',
           statusCode: reply.statusCode ?? 200,
@@ -100,7 +102,7 @@ export async function withIdempotency<T>(
       return result;
     } catch (error) {
       await ctx.prisma.idempotencyKey
-        .delete({ where: { userId_key: { userId: userId as string, key: idempotencyKey } } })
+        .delete({ where: { schoolId_userId_key: { schoolId, userId: userId as string, key: idempotencyKey } } })
         .catch(() => undefined);
       throw error;
     }

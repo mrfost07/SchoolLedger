@@ -3,6 +3,7 @@ import type { Env } from '../../config/env';
 import type { Clock } from '../../core/time/clock';
 import type { BackgroundDispatcher } from '../../context';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import { requireTenantSchoolId, runWithSystem } from '../../core/tenant/context';
 import type { AuditService } from '../audit/audit.service';
 import type { HoldsService } from '../iam/holds.service';
 import type { GradingService } from '../grading/grading.service';
@@ -85,6 +86,7 @@ export class DocumentsService {
     const document = await this.prisma.$transaction(async (tx) => {
       const created = await tx.documentRequest.create({
         data: {
+          schoolId: requireTenantSchoolId(),
           studentId: input.studentId,
           type: input.type,
           termId,
@@ -107,7 +109,7 @@ export class DocumentsService {
       return created;
     });
 
-    await this.dispatcher.enqueueDocumentRender(document.id);
+    await this.dispatcher.enqueueDocumentRender(document.schoolId, document.id);
     return document;
   }
 
@@ -175,6 +177,7 @@ export class DocumentsService {
     await this.prisma.$transaction(async (tx) => {
       await tx.documentDownloadEvent.create({
         data: {
+          schoolId: document.schoolId,
           documentId: document.id,
           actorId: actor.userId,
           ip: requestMeta.ip ?? null,
@@ -229,23 +232,27 @@ export class DocumentsService {
     status: string;
     revokedAt: string | null;
   }> {
-    const document = await this.prisma.documentRequest.findUnique({
-      where: { serialHash },
-      include: { student: { include: { profile: true } } },
+    // Public route: no auth frame exists, so run in explicit system context
+    // (the lookup is by globally-unique serialHash; disclosure stays minimal).
+    return runWithSystem(async () => {
+      const document = await this.prisma.documentRequest.findUnique({
+        where: { serialHash },
+        include: { student: { include: { profile: true } } },
+      });
+      if (!document) {
+        throw new AppError(ErrorCodes.DOCUMENT_NOT_FOUND, 'No document matches this verification code.');
+      }
+      const studentNo = document.student.profile?.studentNo ?? '';
+      return {
+        valid: document.status === 'READY',
+        documentType: document.type,
+        studentName: `${document.student.firstName} ${document.student.lastName[0] ?? ''}.`,
+        studentNoMasked: studentNo ? `${studentNo.slice(0, 3)}${'*'.repeat(Math.max(studentNo.length - 5, 0))}${studentNo.slice(-2)}` : '',
+        issuedAt: document.readyAt?.toISOString() ?? null,
+        status: document.status,
+        revokedAt: document.revokedAt?.toISOString() ?? null,
+      };
     });
-    if (!document) {
-      throw new AppError(ErrorCodes.DOCUMENT_NOT_FOUND, 'No document matches this verification code.');
-    }
-    const studentNo = document.student.profile?.studentNo ?? '';
-    return {
-      valid: document.status === 'READY',
-      documentType: document.type,
-      studentName: `${document.student.firstName} ${document.student.lastName[0] ?? ''}.`,
-      studentNoMasked: studentNo ? `${studentNo.slice(0, 3)}${'*'.repeat(Math.max(studentNo.length - 5, 0))}${studentNo.slice(-2)}` : '',
-      issuedAt: document.readyAt?.toISOString() ?? null,
-      status: document.status,
-      revokedAt: document.revokedAt?.toISOString() ?? null,
-    };
   }
 
   // ── Worker callbacks ───────────────────────────────────────────────────────
@@ -322,7 +329,7 @@ export class DocumentsService {
     });
     // Enqueue only after the transaction commits — the inline dispatcher (and a
     // fast worker) would otherwise race the still-open transaction's row lock.
-    await this.dispatcher.enqueueDocumentRender(documentId);
+    await this.dispatcher.enqueueDocumentRender(document.schoolId, documentId);
     return updated;
   }
 }

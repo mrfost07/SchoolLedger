@@ -2,6 +2,7 @@ import type { PrismaClient, Role as PrismaRole, User } from '@prisma/client';
 import type { Env } from '../../config/env';
 import { signJwt, verifyJwt } from '../../core/crypto/jwt';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import { requireTenantSchoolId, runWithSystem, runWithTenant } from '../../core/tenant/context';
 import type { AuditService } from '../audit/audit.service';
 import { hashPassword, verifyPasswordTimingSafe } from './passwords';
 import type { SessionService } from './sessions';
@@ -14,6 +15,12 @@ export interface IssuedTokens {
   refreshToken: string;
   expiresInSeconds: number;
 }
+
+type MembershipWithAssignments = {
+  id: string;
+  schoolId: string;
+  assignments: Array<{ roleCode: string }>;
+};
 
 export interface CreateUserInput {
   email: string;
@@ -46,13 +53,21 @@ export class IamService {
     return this.sessions;
   }
 
-  private signAccessToken(user: Pick<User, 'id' | 'roles'>, familyId: string | null, mfa = false, mfaAt?: number): string {
+  private signAccessToken(
+    user: Pick<User, 'id' | 'roles'>,
+    roles: string[],
+    schoolId: string,
+    familyId: string | null,
+    mfa = false,
+    mfaAt?: number,
+  ): string {
     return signJwt(
       {
         sub: user.id,
         typ: 'access',
         sid: familyId ?? undefined,
-        roles: user.roles as string[],
+        schoolId,
+        roles,
         mfa,
         ...(mfaAt !== undefined ? { mfaAt } : {}),
       },
@@ -62,11 +77,40 @@ export class IamService {
     );
   }
 
-  private async issueTokens(user: Pick<User, 'id' | 'roles'>): Promise<IssuedTokens> {
+  /**
+   * Resolves the user's active school membership. Memberships are tenant data,
+   * so resolution always runs in system context (login/session grant path).
+   * 1a supports a single active membership per user; multi-school switching is
+   * a later phase.
+   */
+  private async resolveMembershipOrNull(userId: string): Promise<MembershipWithAssignments | null> {
+    return runWithSystem(() =>
+      this.prisma.membership.findFirst({
+        where: { userId, status: 'ACTIVE' },
+        include: { assignments: { select: { roleCode: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+    );
+  }
+
+  /**
+   * Role codes for token claims: role assignments win; the legacy `User.roles`
+   * column backs them up during the 1a transition (seeds maintain both).
+   */
+  private rolesFor(user: Pick<User, 'roles'>, membership: MembershipWithAssignments): string[] {
+    return membership.assignments.length > 0
+      ? membership.assignments.map((a) => a.roleCode)
+      : (user.roles as string[]);
+  }
+
+  private async issueTokens(
+    user: Pick<User, 'id' | 'roles'>,
+    membership: MembershipWithAssignments,
+  ): Promise<IssuedTokens> {
     const { refreshToken, familyId } = await this.requireSessions().issue(user.id);
     return {
       tokenType: 'Bearer',
-      accessToken: this.signAccessToken(user, familyId),
+      accessToken: this.signAccessToken(user, this.rolesFor(user, membership), membership.schoolId, familyId),
       refreshToken,
       expiresInSeconds: this.config.accessTokenTtlMinutes * 60,
     };
@@ -78,6 +122,7 @@ export class IamService {
     actorId: string,
     input: CreateUserInput,
   ): Promise<Omit<User, 'passwordHash' | 'totpSecret'> & { studentNo: string | null }> {
+    const schoolId = requireTenantSchoolId();
     const email = input.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) throw new AppError(ErrorCodes.CONFLICT, `A user with email ${email} already exists.`);
@@ -103,6 +148,17 @@ export class IamService {
         },
       });
 
+      // Every user belongs to exactly one school in 1a: membership + role
+      // assignments mirror the roles column (ADR-0002 transitional model).
+      const membership = await tx.membership.create({
+        data: { schoolId, userId: created.id, status: 'ACTIVE' },
+      });
+      for (const role of input.roles) {
+        await tx.roleAssignment.create({
+          data: { membershipId: membership.id, schoolId, roleCode: role },
+        });
+      }
+
       if (input.student) {
         const program = await tx.program.findUnique({ where: { id: input.student.programId } });
         if (!program) throw new AppError(ErrorCodes.NOT_FOUND, 'Program not found.');
@@ -112,6 +168,7 @@ export class IamService {
         }
         await tx.studentProfile.create({
           data: {
+            schoolId,
             userId: created.id,
             studentNo: input.student.studentNo,
             programId: input.student.programId,
@@ -137,8 +194,10 @@ export class IamService {
   }
 
   async listUsers(params: { role?: Role; search?: string; limit: number }): Promise<Array<Omit<User, 'passwordHash' | 'totpSecret'> & { studentNo: string | null }>> {
+    const schoolId = requireTenantSchoolId();
     const users = await this.prisma.user.findMany({
       where: {
+        memberships: { some: { schoolId, status: 'ACTIVE' } },
         ...(params.role ? { roles: { has: params.role as PrismaRole } } : {}),
         ...(params.search
           ? {
@@ -163,20 +222,39 @@ export class IamService {
   // ── Authentication ─────────────────────────────────────────────────────────
 
   async login(email: string, password: string): Promise<IssuedTokens | { mfaRequired: true; mfaToken: string }> {
-    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    const normalized = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email: normalized } });
 
     if (!(await verifyPasswordTimingSafe(user?.passwordHash ?? null, password)) || !user) {
-      await this.audit.appendStandalone({
-        actorId: user?.id ?? null,
-        action: 'auth.login_failed',
-        resourceType: 'user',
-        resourceId: user?.id ?? null,
-        payload: { email: email.trim().toLowerCase() },
-      });
+      const membership = user ? await this.resolveMembershipOrNull(user.id) : null;
+      const appendFailure = (): Promise<unknown> =>
+        this.audit.appendStandalone({
+          actorId: user?.id ?? null,
+          action: 'auth.login_failed',
+          resourceType: 'user',
+          resourceId: user?.id ?? null,
+          payload: { email: normalized },
+        });
+      if (membership) await runWithTenant(membership.schoolId, appendFailure);
+      else await runWithSystem(appendFailure);
       throw new AppError(ErrorCodes.AUTH_INVALID_CREDENTIALS, 'Invalid email or password.');
     }
     if (user.status !== 'ACTIVE') {
       throw new AppError(ErrorCodes.AUTH_ACCOUNT_DISABLED, `Account is ${user.status.toLowerCase()}.`);
+    }
+
+    const membership = await this.resolveMembershipOrNull(user.id);
+    if (!membership) {
+      await runWithSystem(() =>
+        this.audit.appendStandalone({
+          actorId: user.id,
+          action: 'auth.login_denied',
+          resourceType: 'user',
+          resourceId: user.id,
+          payload: { reason: 'no_active_membership' },
+        }),
+      );
+      throw new AppError(ErrorCodes.AUTH_NO_MEMBERSHIP, 'This account has no active school membership.');
     }
 
     if (user.totpEnabledAt) {
@@ -184,7 +262,7 @@ export class IamService {
         throw new AppError(ErrorCodes.AUTH_MFA_REQUIRED, 'Account requires MFA but the session store is unavailable.');
       }
       const mfaToken = signJwt(
-        { sub: user.id, typ: 'mfa', roles: user.roles as string[] },
+        { sub: user.id, typ: 'mfa', schoolId: membership.schoolId, roles: this.rolesFor(user, membership) },
         this.config.jwtMfaSecret,
         this.config.mfaTokenTtlMinutes * 60,
         new Date(),
@@ -192,14 +270,16 @@ export class IamService {
       return { mfaRequired: true, mfaToken };
     }
 
-    const tokens = await this.issueTokens(user);
-    await this.audit.appendStandalone({
-      actorId: user.id,
-      action: 'auth.login',
-      resourceType: 'user',
-      resourceId: user.id,
-      payload: { method: 'password' },
-    });
+    const tokens = await runWithTenant(membership.schoolId, () => this.issueTokens(user, membership));
+    await runWithTenant(membership.schoolId, () =>
+      this.audit.appendStandalone({
+        actorId: user.id,
+        action: 'auth.login',
+        resourceType: 'user',
+        resourceId: user.id,
+        payload: { method: 'password' },
+      }),
+    );
     return tokens;
   }
 
@@ -211,25 +291,33 @@ export class IamService {
     if (!user || user.status !== 'ACTIVE' || !user.totpEnabledAt || !user.totpSecret) {
       throw new AppError(ErrorCodes.AUTH_MFA_INVALID, 'MFA challenge is no longer valid.');
     }
+    const membership = await this.resolveMembershipOrNull(user.id);
+    if (!membership) {
+      throw new AppError(ErrorCodes.AUTH_NO_MEMBERSHIP, 'This account has no active school membership.');
+    }
     if (!verifyTotpCode(code, user.totpSecret)) {
-      await this.audit.appendStandalone({
-        actorId: user.id,
-        action: 'auth.mfa_failed',
-        resourceType: 'user',
-        resourceId: user.id,
-        payload: {},
-      });
+      await runWithTenant(membership.schoolId, () =>
+        this.audit.appendStandalone({
+          actorId: user.id,
+          action: 'auth.mfa_failed',
+          resourceType: 'user',
+          resourceId: user.id,
+          payload: {},
+        }),
+      );
       throw new AppError(ErrorCodes.AUTH_MFA_INVALID, 'Invalid one-time code.');
     }
 
-    const tokens = await this.issueTokens(user);
-    await this.audit.appendStandalone({
-      actorId: user.id,
-      action: 'auth.login',
-      resourceType: 'user',
-      resourceId: user.id,
-      payload: { method: 'password+totp' },
-    });
+    const tokens = await runWithTenant(membership.schoolId, () => this.issueTokens(user, membership));
+    await runWithTenant(membership.schoolId, () =>
+      this.audit.appendStandalone({
+        actorId: user.id,
+        action: 'auth.login',
+        resourceType: 'user',
+        resourceId: user.id,
+        payload: { method: 'password+totp' },
+      }),
+    );
     return tokens;
   }
 
@@ -242,9 +330,14 @@ export class IamService {
       await sessions.revokeFamily(rotation.familyId);
       throw new AppError(ErrorCodes.AUTH_ACCOUNT_DISABLED, 'Account is not active.');
     }
+    const membership = await this.resolveMembershipOrNull(user.id);
+    if (!membership) {
+      await sessions.revokeFamily(rotation.familyId);
+      throw new AppError(ErrorCodes.AUTH_NO_MEMBERSHIP, 'This account has no active school membership.');
+    }
     return {
       tokenType: 'Bearer',
-      accessToken: this.signAccessToken(user, rotation.familyId),
+      accessToken: this.signAccessToken(user, this.rolesFor(user, membership), membership.schoolId, rotation.familyId),
       refreshToken: rotation.refreshToken,
       expiresInSeconds: this.config.accessTokenTtlMinutes * 60,
     };
@@ -254,13 +347,17 @@ export class IamService {
     const sessions = this.requireSessions();
     const familyId = await sessions.revokeByToken(refreshToken);
     if (familyId) {
-      await this.audit.appendStandalone({
-        actorId: null,
-        action: 'auth.logout',
-        resourceType: 'session',
-        resourceId: familyId,
-        payload: {},
-      });
+      // Logout carries no access token; the event belongs to the platform
+      // chain (session lifecycle), not to a school.
+      await runWithSystem(() =>
+        this.audit.appendStandalone({
+          actorId: null,
+          action: 'auth.logout',
+          resourceType: 'session',
+          resourceId: familyId,
+          payload: {},
+        }),
+      );
     }
   }
 
@@ -328,14 +425,20 @@ export class IamService {
     }
 
     const mfaAt = Math.floor(Date.now() / 1000);
-    const accessToken = this.signAccessToken(user, sessionId, true, mfaAt);
-    await this.audit.appendStandalone({
-      actorId: userId,
-      action: 'auth.step_up',
-      resourceType: 'user',
-      resourceId: userId,
-      payload: { sessionId },
-    });
+    const membership = await this.resolveMembershipOrNull(user.id);
+    if (!membership) {
+      throw new AppError(ErrorCodes.AUTH_NO_MEMBERSHIP, 'This account has no active school membership.');
+    }
+    const accessToken = this.signAccessToken(user, this.rolesFor(user, membership), membership.schoolId, sessionId, true, mfaAt);
+    await runWithTenant(membership.schoolId, () =>
+      this.audit.appendStandalone({
+        actorId: userId,
+        action: 'auth.step_up',
+        resourceType: 'user',
+        resourceId: userId,
+        payload: { sessionId },
+      }),
+    );
     return {
       tokenType: 'Bearer',
       accessToken,

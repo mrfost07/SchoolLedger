@@ -5,9 +5,11 @@ import type { AppContext } from '../../src/context';
 import type { Env } from '../../src/config/env';
 import { MutableClock } from '../../src/core/time/clock';
 import { FsStorage } from '../../src/infra/storage';
+import { createPrismaClient } from '../../src/infra/prisma';
 import { buildApp, composeServices, type ComposedServices } from '../../src/app';
 import { signJwt } from '../../src/core/crypto/jwt';
 import { getTestInfra, type TestInfra } from './infra';
+import { TEST_SCHOOL_ID } from './fixtures';
 
 export const TEST_START = new Date('2026-01-05T08:00:00.000Z');
 
@@ -17,13 +19,14 @@ export interface TestApp {
   services: ComposedServices;
   clock: MutableClock;
   infra: TestInfra;
+  /** Raw admin client (fixtures/assertions). Use `ctx.prisma` for app-path calls. */
   prisma: PrismaClient;
   config: Env;
   /** Directly minted access token (bypasses password/TOTP for setup-heavy tests). */
   mintToken(
     userId: string,
     roles: string[],
-    options?: { mfa?: boolean; ttlSeconds?: number },
+    options?: { mfa?: boolean; ttlSeconds?: number; schoolId?: string },
   ): string;
   auth(token: string): Record<string, string>;
   close(): Promise<void>;
@@ -81,9 +84,10 @@ export async function createTestApp(options: { reset?: boolean; clockAt?: Date }
 
   const clock = new MutableClock(options.clockAt ?? TEST_START);
   const config = testEnv(infra);
-  const logger = pino({ level: 'silent' });
+  const logger = pino({ level: process.env.TEST_LOG_LEVEL ?? 'silent' });
   const storage = new FsStorage(config, infra.storageDir);
-  const ctx: AppContext = { config, prisma: infra.prisma, redis: infra.redis, storage, clock, logger };
+  const appPrisma = createPrismaClient(infra.databaseUrl);
+  const ctx: AppContext = { config, prisma: appPrisma, redis: infra.redis, storage, clock, logger };
 
   const services = composeServices(ctx, { inlineJobs: true });
   const app = buildApp(ctx, services);
@@ -107,6 +111,7 @@ export async function createTestApp(options: { reset?: boolean; clockAt?: Date }
           sub: userId,
           typ: 'access',
           roles,
+          schoolId: opts.schoolId ?? TEST_SCHOOL_ID,
           ...(opts.mfa ? { mfa: true, mfaAt: nowSeconds } : {}),
         },
         config.jwtAccessSecret,
@@ -120,6 +125,7 @@ export async function createTestApp(options: { reset?: boolean; clockAt?: Date }
     async close() {
       await app.close();
       await services.close();
+      await appPrisma.$disconnect().catch(() => undefined);
     },
   };
 }

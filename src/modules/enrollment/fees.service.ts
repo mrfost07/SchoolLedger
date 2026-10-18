@@ -3,6 +3,7 @@ import type { PrismaClient, TuitionAssessment } from '@prisma/client';
 import type { Env } from '../../config/env';
 import { canonicalJson, sha256Hex } from '../../core/crypto/hash';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import { requireTenantSchoolId } from '../../core/tenant/context';
 import type { AuditService } from '../audit/audit.service';
 
 interface LineItem {
@@ -194,6 +195,7 @@ export class FeesService {
     return this.prisma.$transaction(async (tx) => {
       const assessment = await tx.tuitionAssessment.create({
         data: {
+          schoolId: requireTenantSchoolId(),
           enrollmentId,
           currency: breakdown.currency,
           breakdown: JSON.parse(canonicalJson(breakdown)) as object,

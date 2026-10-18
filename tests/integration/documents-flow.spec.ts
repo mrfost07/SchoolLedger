@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { hmacSha256Hex, sha256Hex, timingSafeEqualHex } from '../../src/core/crypto/hash';
+import { runWithSystem } from '../../src/core/tenant/context';
 import { FsPresign } from '../../src/infra/storage';
 import { createTestApp, type TestApp } from '../helpers/app';
 import {
@@ -281,7 +282,8 @@ describe('documents flow: request, render, download, verify, revoke', () => {
     expect(created.statusCode).toBe(201);
     const documentId = created.json().id as string;
 
-    await test.services.documents.markFailed(documentId, 'simulated renderer crash');
+    // markFailed is a worker/system callback (no request frame in this test).
+    await runWithSystem(() => test.services.documents.markFailed(documentId, 'simulated renderer crash'));
     const failed = await test.app.inject({
       method: 'GET',
       url: `/api/v1/documents/requests/${documentId}`,

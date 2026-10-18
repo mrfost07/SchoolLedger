@@ -8,6 +8,7 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { AppContext, BackgroundDispatcher } from './context';
 import type { AppServer } from './core/http/server-types';
 import { registerProblemErrorHandler } from './core/errors/problem';
+import { runWithStore, runWithTenant } from './core/tenant/context';
 import { createPrismaClient } from './infra/prisma';
 import { createQueues, createBullDispatcher, createInlineDispatcher, type Queues } from './infra/queues';
 import { AuditService } from './modules/audit/audit.service';
@@ -84,11 +85,11 @@ export function composeServices(ctx: AppContext, options: ComposeOptions = {}): 
   const dispatcher: BackgroundDispatcher = queues
     ? createBullDispatcher(queues)
     : createInlineDispatcher({
-        renderDocument: async (documentId) => {
-          await documentWorker.render({ documentId });
+        renderDocument: async (schoolId, documentId) => {
+          await runWithTenant(schoolId, () => documentWorker.render({ schoolId, documentId }));
         },
-        promoteWaitlist: async (termId, sectionId) => {
-          await waitlist.promote(termId, sectionId);
+        promoteWaitlist: async (schoolId, termId, sectionId) => {
+          await runWithTenant(schoolId, () => waitlist.promote(termId, sectionId));
         },
       });
 
@@ -165,6 +166,14 @@ export function buildApp(ctx: AppContext, services: ComposedServices): AppServer
   });
 
   registerProblemErrorHandler(app);
+
+  // Tenant context frame (ADR-0001): every request starts with an unbound
+  // store; the auth layer binds the school once the JWT is verified. The
+  // callback-style hook is required so the AsyncLocalStorage frame covers the
+  // rest of the request pipeline (handler + services).
+  app.addHook('onRequest', (_request, _reply, done) => {
+    runWithStore({ schoolId: null, system: false }, () => done());
+  });
 
   // Routes live inside a plugin registered after @fastify/swagger: avvio defers
   // plugin loading until ready(), so root-level routes added synchronously here

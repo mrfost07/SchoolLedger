@@ -9,10 +9,12 @@ export const QUEUE_NAMES = {
 } as const;
 
 export interface DocumentRenderJob {
+  schoolId: string;
   documentId: string;
 }
 
 export interface WaitlistPromotionJob {
+  schoolId: string;
   termId: string;
   sectionId: string;
 }
@@ -54,13 +56,13 @@ export async function registerIncSweepSchedule(queues: Queues): Promise<void> {
 export function createBullDispatcher(queues: Queues): BackgroundDispatcher {
   return {
     mode: 'bullmq',
-    async enqueueDocumentRender(documentId: string) {
-      await queues.documents.add('render', { documentId }, { removeOnComplete: 500, removeOnFail: 500 });
+    async enqueueDocumentRender(schoolId: string, documentId: string) {
+      await queues.documents.add('render', { schoolId, documentId }, { removeOnComplete: 500, removeOnFail: 500 });
     },
-    async enqueueWaitlistPromotion(termId: string, sectionId: string) {
+    async enqueueWaitlistPromotion(schoolId: string, termId: string, sectionId: string) {
       await queues.waitlist.add(
         'promote',
-        { termId, sectionId },
+        { schoolId, termId, sectionId },
         { jobId: `promote:${sectionId}`, removeOnComplete: 500, removeOnFail: 500 },
       );
     },
@@ -68,19 +70,19 @@ export function createBullDispatcher(queues: Queues): BackgroundDispatcher {
 }
 
 export interface InlineHandlers {
-  renderDocument(documentId: string): Promise<void>;
-  promoteWaitlist(termId: string, sectionId: string): Promise<void>;
+  renderDocument(schoolId: string, documentId: string): Promise<void>;
+  promoteWaitlist(schoolId: string, termId: string, sectionId: string): Promise<void>;
 }
 
 /** Executes background handlers inline — used by tests and degraded mode. */
 export function createInlineDispatcher(handlers: InlineHandlers): BackgroundDispatcher {
   return {
     mode: 'inline',
-    async enqueueDocumentRender(documentId: string) {
-      await handlers.renderDocument(documentId);
+    async enqueueDocumentRender(schoolId: string, documentId: string) {
+      await handlers.renderDocument(schoolId, documentId);
     },
-    async enqueueWaitlistPromotion(termId: string, sectionId: string) {
-      await handlers.promoteWaitlist(termId, sectionId);
+    async enqueueWaitlistPromotion(schoolId: string, termId: string, sectionId: string) {
+      await handlers.promoteWaitlist(schoolId, termId, sectionId);
     },
   };
 }

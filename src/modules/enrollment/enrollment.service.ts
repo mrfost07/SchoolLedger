@@ -4,6 +4,7 @@ import type { Env } from '../../config/env';
 import type { BackgroundDispatcher } from '../../context';
 import type { Clock } from '../../core/time/clock';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import { requireTenantSchoolId } from '../../core/tenant/context';
 import type { AuditService } from '../audit/audit.service';
 import type { HoldsService } from '../iam/holds.service';
 import type { ConflictDiagnostic, Interval } from '../academics/conflicts';
@@ -351,6 +352,7 @@ export class EnrollmentService {
       for (const section of sections) {
         const item = await tx.enrollmentItem.create({
           data: {
+            schoolId: requireTenantSchoolId(),
             enrollmentId: enrollment.id,
             sectionId: section.id,
             status: 'ENROLLED',
@@ -398,7 +400,7 @@ export class EnrollmentService {
     const existing = await tx.enrollment.findUnique({ where: { studentId_termId: { studentId, termId } } });
     if (!existing) {
       return tx.enrollment.create({
-        data: { studentId, termId, status: 'ENROLLED', confirmedAt: now },
+        data: { schoolId: requireTenantSchoolId(), studentId, termId, status: 'ENROLLED', confirmedAt: now },
       });
     }
     if (existing.status === 'CANCELLED') {
@@ -516,7 +518,7 @@ export class EnrollmentService {
     // Waitlist auto-promotion (BSL-204).
     let promoted = false;
     if (wasEnrolled && item.section.waitlistCount > 0) {
-      await this.dispatcher.enqueueWaitlistPromotion(item.enrollment.termId, item.sectionId);
+      await this.dispatcher.enqueueWaitlistPromotion(item.schoolId, item.enrollment.termId, item.sectionId);
       promoted = true;
     }
 
@@ -563,6 +565,7 @@ export class EnrollmentService {
       const enrollment = await this.upsertEnrollment(tx, studentId, termId, now);
       const item = await tx.enrollmentItem.create({
         data: {
+          schoolId: requireTenantSchoolId(),
           enrollmentId: enrollment.id,
           sectionId,
           status: 'WAITLISTED',

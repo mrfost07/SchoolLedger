@@ -12,8 +12,8 @@ import type { StoragePort } from './infra/storage';
  */
 export interface BackgroundDispatcher {
   readonly mode: 'bullmq' | 'inline';
-  enqueueDocumentRender(documentId: string): Promise<void>;
-  enqueueWaitlistPromotion(termId: string, sectionId: string): Promise<void>;
+  enqueueDocumentRender(schoolId: string, documentId: string): Promise<void>;
+  enqueueWaitlistPromotion(schoolId: string, termId: string, sectionId: string): Promise<void>;
 }
 
 export interface AppContext {
