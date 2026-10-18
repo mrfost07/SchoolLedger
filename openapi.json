@@ -45070,6 +45070,2305 @@
           }
         }
       }
+    },
+    "/api/v1/school": {
+      "get": {
+        "summary": "Current school profile, branding and effective academic policy.",
+        "tags": [
+          "School"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "school",
+                    "policy",
+                    "policySource"
+                  ],
+                  "properties": {
+                    "school": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "status",
+                        "address",
+                        "contactEmail",
+                        "contactPhone",
+                        "website",
+                        "logoUrl",
+                        "brandColor"
+                      ],
+                      "properties": {
+                        "id": {
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ACTIVE"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "SUSPENDED"
+                              ]
+                            }
+                          ]
+                        },
+                        "address": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "contactEmail": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "contactPhone": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "website": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "logoUrl": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "brandColor": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "policy": {
+                      "type": "object",
+                      "required": [
+                        "maxAcademicUnits",
+                        "passingGradeMax",
+                        "incDefaultGrade",
+                        "incCompletionDays",
+                        "deansListerMaxGwa",
+                        "honorsSummaMax",
+                        "honorsMagnaMax",
+                        "honorsCumLaudeMax",
+                        "currency"
+                      ],
+                      "properties": {
+                        "maxAcademicUnits": {
+                          "type": "integer"
+                        },
+                        "passingGradeMax": {
+                          "type": "string"
+                        },
+                        "incDefaultGrade": {
+                          "type": "string"
+                        },
+                        "incCompletionDays": {
+                          "type": "integer"
+                        },
+                        "deansListerMaxGwa": {
+                          "type": "string"
+                        },
+                        "honorsSummaMax": {
+                          "type": "string"
+                        },
+                        "honorsMagnaMax": {
+                          "type": "string"
+                        },
+                        "honorsCumLaudeMax": {
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "policySource": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "school"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "env"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update school profile and branding (ADMIN).",
+        "tags": [
+          "School"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "type": "string"
+                  },
+                  "address": {
+                    "anyOf": [
+                      {
+                        "maxLength": 300,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contactEmail": {
+                    "anyOf": [
+                      {
+                        "format": "email",
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contactPhone": {
+                    "anyOf": [
+                      {
+                        "maxLength": 40,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "website": {
+                    "anyOf": [
+                      {
+                        "maxLength": 300,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "logoUrl": {
+                    "anyOf": [
+                      {
+                        "maxLength": 500,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "brandColor": {
+                    "anyOf": [
+                      {
+                        "pattern": "^#[0-9a-fA-F]{6}$",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "school",
+                    "policy",
+                    "policySource"
+                  ],
+                  "properties": {
+                    "school": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "status",
+                        "address",
+                        "contactEmail",
+                        "contactPhone",
+                        "website",
+                        "logoUrl",
+                        "brandColor"
+                      ],
+                      "properties": {
+                        "id": {
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ACTIVE"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "SUSPENDED"
+                              ]
+                            }
+                          ]
+                        },
+                        "address": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "contactEmail": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "contactPhone": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "website": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "logoUrl": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "brandColor": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "policy": {
+                      "type": "object",
+                      "required": [
+                        "maxAcademicUnits",
+                        "passingGradeMax",
+                        "incDefaultGrade",
+                        "incCompletionDays",
+                        "deansListerMaxGwa",
+                        "honorsSummaMax",
+                        "honorsMagnaMax",
+                        "honorsCumLaudeMax",
+                        "currency"
+                      ],
+                      "properties": {
+                        "maxAcademicUnits": {
+                          "type": "integer"
+                        },
+                        "passingGradeMax": {
+                          "type": "string"
+                        },
+                        "incDefaultGrade": {
+                          "type": "string"
+                        },
+                        "incCompletionDays": {
+                          "type": "integer"
+                        },
+                        "deansListerMaxGwa": {
+                          "type": "string"
+                        },
+                        "honorsSummaMax": {
+                          "type": "string"
+                        },
+                        "honorsMagnaMax": {
+                          "type": "string"
+                        },
+                        "honorsCumLaudeMax": {
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "policySource": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "school"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "env"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/school/policies": {
+      "patch": {
+        "summary": "Update academic policy (unit load limit, grade thresholds, INC window, currency) (ADMIN).",
+        "tags": [
+          "School"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "maxAcademicUnits": {
+                    "minimum": 1,
+                    "maximum": 60,
+                    "type": "integer"
+                  },
+                  "passingGradeMax": {
+                    "pattern": "^[0-5](\\.\\d{1,2})?$",
+                    "type": "string"
+                  },
+                  "incDefaultGrade": {
+                    "pattern": "^[0-5](\\.\\d{1,2})?$",
+                    "type": "string"
+                  },
+                  "incCompletionDays": {
+                    "minimum": 1,
+                    "maximum": 3650,
+                    "type": "integer"
+                  },
+                  "deansListerMaxGwa": {
+                    "pattern": "^[0-5](\\.\\d{1,2})?$",
+                    "type": "string"
+                  },
+                  "honorsSummaMax": {
+                    "pattern": "^[0-5](\\.\\d{1,2})?$",
+                    "type": "string"
+                  },
+                  "honorsMagnaMax": {
+                    "pattern": "^[0-5](\\.\\d{1,2})?$",
+                    "type": "string"
+                  },
+                  "honorsCumLaudeMax": {
+                    "pattern": "^[0-5](\\.\\d{1,2})?$",
+                    "type": "string"
+                  },
+                  "currency": {
+                    "minLength": 3,
+                    "maxLength": 3,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "school",
+                    "policy",
+                    "policySource"
+                  ],
+                  "properties": {
+                    "school": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "status",
+                        "address",
+                        "contactEmail",
+                        "contactPhone",
+                        "website",
+                        "logoUrl",
+                        "brandColor"
+                      ],
+                      "properties": {
+                        "id": {
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ACTIVE"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "SUSPENDED"
+                              ]
+                            }
+                          ]
+                        },
+                        "address": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "contactEmail": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "contactPhone": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "website": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "logoUrl": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "brandColor": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "policy": {
+                      "type": "object",
+                      "required": [
+                        "maxAcademicUnits",
+                        "passingGradeMax",
+                        "incDefaultGrade",
+                        "incCompletionDays",
+                        "deansListerMaxGwa",
+                        "honorsSummaMax",
+                        "honorsMagnaMax",
+                        "honorsCumLaudeMax",
+                        "currency"
+                      ],
+                      "properties": {
+                        "maxAcademicUnits": {
+                          "type": "integer"
+                        },
+                        "passingGradeMax": {
+                          "type": "string"
+                        },
+                        "incDefaultGrade": {
+                          "type": "string"
+                        },
+                        "incCompletionDays": {
+                          "type": "integer"
+                        },
+                        "deansListerMaxGwa": {
+                          "type": "string"
+                        },
+                        "honorsSummaMax": {
+                          "type": "string"
+                        },
+                        "honorsMagnaMax": {
+                          "type": "string"
+                        },
+                        "honorsCumLaudeMax": {
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "policySource": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "school"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "env"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "RFC 7807 problem details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "RFC 7807 problem details",
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "errors"
+                  ],
+                  "properties": {
+                    "type": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "servers": [
@@ -45102,6 +47401,10 @@
     {
       "name": "Documents",
       "description": "Document issuance, signed PDFs, verification"
+    },
+    {
+      "name": "School",
+      "description": "School profile, branding and academic policy"
     }
   ]
 }
