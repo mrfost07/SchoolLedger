@@ -286,7 +286,7 @@ export class IamService {
 
     const secret = generateTotpSecret();
     await this.prisma.user.update({ where: { id: userId }, data: { totpSecret: secret } });
-    return { secret, otpauthUrl: totpKeyUri(user.email, 'SchoolPortal', secret) };
+    return { secret, otpauthUrl: totpKeyUri(user.email, 'SchoolLedger', secret) };
   }
 
   async enableTotp(userId: string, code: string): Promise<void> {

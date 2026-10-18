@@ -74,7 +74,7 @@ function GetRt($session) {
 Write-Output "== A. sign-in page + login + session custody =="
 $page = Api "GET" "/sign-in" $null
 Check "GET /sign-in 200" ($page.status -eq 200) "status=$($page.status)"
-Check "sign-in HTML has wordmark" ($page.raw -match "Student Portal")
+Check "sign-in HTML has wordmark" ($page.raw -match "SchoolLedger")
 
 $ws = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $login = Api "POST" "/session/login" $null @{ email = "alice.santos@student.portal.test"; password = "Password123!" } @{} $ws
@@ -92,15 +92,15 @@ Check "me email matches" ($me.json.email -eq "alice.santos@student.portal.test")
 Check "me has student profile" ($null -ne $me.json.profile.studentNo) "studentNo=$($me.json.profile.studentNo)"
 $studentId = $me.json.id
 
-Write-Output "== B. portal pages render (SSR through the shell) =="
+Write-Output "== B. web pages render (SSR through the shell) =="
 foreach ($path in @("/", "/enroll", "/schedule", "/grades", "/assessment", "/documents", "/holds", "/account")) {
   $p = Api "GET" $path $null $null @{} $ws
   Check "GET $path 200" ($p.status -eq 200) "status=$($p.status)"
 }
 $homePage = Api "GET" "/" $null $null @{} $ws
-Check "home HTML has wordmark" ($homePage.raw -match "Student Portal")
+Check "home HTML has wordmark" ($homePage.raw -match "SchoolLedger")
 $enrollPage = Api "GET" "/enroll" $null $null @{} $ws
-Check "portal shell SSR'd on /enroll (page content is client-gated)" ($enrollPage.raw -match "Student Portal")
+Check "app shell SSR'd on /enroll (page content is client-gated)" ($enrollPage.raw -match "SchoolLedger")
 
 Write-Output "== C. catalog context =="
 $terms = Api "GET" "/api/v1/academics/terms" $token

@@ -18,10 +18,10 @@ const publicSans = Public_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "Student Portal",
-    template: "%s · Student Portal",
+    default: "SchoolLedger",
+    template: "%s · SchoolLedger",
   },
-  description: "Enrollment, grades, and records.",
+  description: "Enrollment, grades, and records — SchoolLedger.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

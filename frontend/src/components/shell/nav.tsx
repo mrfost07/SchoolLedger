@@ -19,7 +19,7 @@ export function Nav() {
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <nav aria-label="Portal" className="flex flex-wrap gap-x-4 gap-y-1 text-body">
+    <nav aria-label="Primary" className="flex flex-wrap gap-x-4 gap-y-1 text-body">
       {LINKS.map((link) => (
         <Link
           key={link.href}

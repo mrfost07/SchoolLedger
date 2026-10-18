@@ -19,7 +19,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-10 lg:px-8">
         <p className="font-display text-label font-semibold text-ink-soft">Enrollment &amp; records</p>
-        <h1 className="mt-1 font-display text-display-3 font-semibold">Student Portal</h1>
+        <h1 className="mt-1 font-display text-display-3 font-semibold">SchoolLedger</h1>
         <div className="mt-6 border-t-2 border-ink" />
         <SkeletonRows rows={5} className="mt-6" />
       </main>
@@ -31,7 +31,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
       <header className="border-b-2 border-ink bg-paper">
         <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-4 py-4 lg:px-8">
           <p className="font-display text-title font-semibold">
-            Student Portal
+            SchoolLedger
             <span className="ml-2 text-label font-normal text-ink-soft">Enrollment &amp; records</span>
           </p>
           <Nav />

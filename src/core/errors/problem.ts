@@ -13,7 +13,7 @@ export interface ProblemDetails {
   requestId?: string;
 }
 
-const ERROR_BASE_URI = 'https://errors.school-portal.dev';
+const ERROR_BASE_URI = 'https://errors.schoolledger.dev';
 
 export function toProblemDetails(error: unknown, requestId: string, instance: string): ProblemDetails {
   if (error instanceof AppError) {

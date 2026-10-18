@@ -1,4 +1,4 @@
-# Student Portal — Frontend System Design
+# SchoolLedger — Frontend System Design
 
 Status: **plan for approval** (pass 1 of 2 — plan, review, then build)
 Scope: student-facing portal only. Next.js + TypeScript + Tailwind. Authored with the `frontend-design` skill workflow.

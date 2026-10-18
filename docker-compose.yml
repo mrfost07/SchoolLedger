@@ -3,26 +3,26 @@ version: '3.9'
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: portal-postgres
+    container_name: schoolledger-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: portal
-      POSTGRES_PASSWORD: portal
-      POSTGRES_DB: portal
+      POSTGRES_USER: schoolledger
+      POSTGRES_PASSWORD: schoolledger
+      POSTGRES_DB: schoolledger
       # btree_gist ships with postgresql-contrib, present in the official image
     ports:
       - '5432:5432'
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U portal -d portal']
+      test: ['CMD-SHELL', 'pg_isready -U schoolledger -d schoolledger']
       interval: 5s
       timeout: 5s
       retries: 20
 
   redis:
     image: redis:7-alpine
-    container_name: portal-redis
+    container_name: schoolledger-redis
     restart: unless-stopped
     command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
     ports:
@@ -37,7 +37,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: portal-minio
+    container_name: schoolledger-minio
     restart: unless-stopped
     command: ['server', '/data', '--console-address', ':9001']
     environment:
@@ -56,14 +56,14 @@ services:
 
   createbucket:
     image: minio/mc:latest
-    container_name: portal-minio-init
+    container_name: schoolledger-minio-init
     depends_on:
       minio:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
       mc alias set local http://minio:9000 minioadmin minioadmin &&
-      mc mb --ignore-existing local/portal-documents &&
+      mc mb --ignore-existing local/schoolledger-documents &&
       echo 'bucket ready'"
 
 volumes:

@@ -122,7 +122,7 @@ export function loadEnv(): Env {
     storageFsDir: str('STORAGE_FS_DIR', './storage'),
     s3Endpoint: str('S3_ENDPOINT', 'http://localhost:9000'),
     s3Region: str('S3_REGION', 'us-east-1'),
-    s3Bucket: str('S3_BUCKET', 'portal-documents'),
+    s3Bucket: str('S3_BUCKET', 'schoolledger-documents'),
     s3AccessKey: str('S3_ACCESS_KEY', 'minioadmin'),
     s3SecretKey: str('S3_SECRET_KEY', 'minioadmin'),
     s3ForcePathStyle: bool('S3_FORCE_PATH_STYLE', true),

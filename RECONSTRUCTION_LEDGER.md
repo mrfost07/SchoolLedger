@@ -1,4 +1,4 @@
-# RECONSTRUCTION LEDGER — Student Portal Backend (SIS)
+# RECONSTRUCTION LEDGER — SchoolLedger (SIS)
 
 > **Artifact status:** Phase 0 reverse-engineering output.
 > Every behavioral obligation implemented by this backend carries a **evidence ID** (`BSL-###` = baseline
@@ -176,7 +176,7 @@ without a fresh elevation); the hold check applies on top (422 `STUDENT_CLEARANC
 
 ---
 
-## 9. Frontend client (student portal)
+## 9. Frontend client (web app)
 
 Not a reconstruction obligation — the student-facing app built on the audited backend.
 

@@ -140,7 +140,7 @@ Student dashboard (`docs/teardown-evidence/edupro-student-dashboard.png`):
 - Notable: attendance surfaced as a compact ledger (close to our ledger aesthetic); session/term label shown per row ("2025/2026 / Third Term") — validated our `2026–1st sem` label approach.
 
 Takeaways: the portal nav floor for K-12 roles is **8 items or fewer**; dashboard = 4–6
-glanceable widgets; periods/terms always visible in context. Our student portal already
+glanceable widgets; periods/terms always visible in context. Our web client already
 matches the lower half of this map; teacher/family consoles in later phases should keep
 the same density discipline.
 

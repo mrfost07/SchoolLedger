@@ -59,7 +59,7 @@ export default function SignInPage() {
     <main className="flex min-h-dvh items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <p className="font-display text-label font-semibold text-ink-soft">Enrollment &amp; records</p>
-        <h1 className="mt-1 font-display text-display-3 font-semibold">Student Portal</h1>
+        <h1 className="mt-1 font-display text-display-3 font-semibold">SchoolLedger</h1>
         <div className="mt-2 border-t-2 border-ink" />
 
         {step === "credentials" ? (

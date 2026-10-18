@@ -20,8 +20,8 @@ jobs:
       run:
         working-directory: .
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -42,8 +42,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -53,6 +53,8 @@ jobs:
         run: |
           npm run gen:api
           git diff --exit-code src/lib/api/schema.d.ts
+      - name: Generate Next.js route types (LayoutProps/PageProps globals)
+        run: npm run typegen
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test

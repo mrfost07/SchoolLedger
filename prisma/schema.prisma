@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Student Portal Backend — SIS schema
+// SchoolLedger — SIS schema
 // Hard DB invariants (btree_gist EXCLUDE, immutability triggers, partial uniques,
 // CHECK constraints) live in prisma/migrations/0002_hardening/migration.sql
 // ─────────────────────────────────────────────────────────────────────────────

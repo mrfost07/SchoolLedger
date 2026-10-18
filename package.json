@@ -1,8 +1,8 @@
 {
-  "name": "students-portal-backend",
+  "name": "schoolledger-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "Headless Student Information & Academic Management System backend (SIS) — modular monolith, event-driven workers, OpenAPI 3.1 contract.",
+  "description": "SchoolLedger — headless school information system (SIS) backend: modular monolith, event-driven workers, OpenAPI 3.1 contract.",
   "engines": {
     "node": ">=22.0.0"
   },

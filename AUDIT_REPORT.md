@@ -1,6 +1,6 @@
 # Security & Correctness Audit Report
 
-**Project:** StudentsPortal — headless School Portal Backend (SIS)
+**Project:** SchoolLedger — headless school information system backend (SIS)
 **Date:** 2026-10-16
 **Scope:** full src/, prisma/, tests/ — module-by-module review, concurrency/security/performance analysis
 **Method:** read every module end-to-end, cross-checked against `RECONSTRUCTION_LEDGER.md` obligations (BSL-xxx, INV-1..7), executed the full test suite before and after fixes. Every finding below cites the file it lives in; every fix has a passing regression test unless explicitly noted.

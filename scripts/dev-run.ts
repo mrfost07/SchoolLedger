@@ -16,7 +16,7 @@ import EmbeddedPostgres from 'embedded-postgres';
 import { RedisMemoryServer } from 'redis-memory-server';
 
 const PG_PORT = Number.parseInt(process.env.DEV_PG_PORT ?? '5433', 10);
-const DB_NAME = 'students_portal_dev';
+const DB_NAME = 'schoolledger_dev';
 
 export const DEV_SECRETS = {
   JWT_ACCESS_SECRET: 'dev-access-secret',
@@ -26,7 +26,7 @@ export const DEV_SECRETS = {
 } as const;
 
 async function main(): Promise<void> {
-  const dataDir = mkdtempSync(join(tmpdir(), 'studentsportal-dev-pg-'));
+  const dataDir = mkdtempSync(join(tmpdir(), 'schoolledger-dev-pg-'));
   const pg = new EmbeddedPostgres({
     databaseDir: dataDir,
     user: 'postgres',

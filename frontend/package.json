@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "schoolledger-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 5173",
     "lint": "eslint",
+    "typegen": "next typegen",
     "typecheck": "tsc --noEmit",
     "gen:api": "openapi-typescript ../openapi.json -o src/lib/api/schema.d.ts",
     "test": "vitest run"

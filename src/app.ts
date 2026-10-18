@@ -130,7 +130,7 @@ export function buildApp(ctx: AppContext, services: ComposedServices): AppServer
     openapi: {
       openapi: '3.1.0',
       info: {
-        title: 'StudentsPortal API',
+        title: 'SchoolLedger API',
         description:
           'Headless Student Information & Academic Management System. Concurrency-safe enrollment, immutable grade ledger, signed document issuance.',
         version: '1.0.0',

@@ -8,7 +8,7 @@
 ## Context
 
 The backend already computes fees deterministically (`fees.service.ts`, Decimal.js) and
-the student portal shows assessment amounts, but there is no payment, receipt, or
+the web client shows assessment amounts, but there is no payment, receipt, or
 receivable model. References split between homegrown ledgers (Fedena: brittle), native
 accounting suites (OpenEduCat: rich, heavy), and invoice-only (Gibbon: no statements).
 We need: cashier desk (Phase 5), online payments later, receipts/OR printing, clearance

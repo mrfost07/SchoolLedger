@@ -1,6 +1,6 @@
-# Student Portal — Frontend
+# SchoolLedger — Frontend
 
-Next.js 16 (App Router) client for the Student Portal backend. Implements the design in
+Next.js 16 (App Router) client for the SchoolLedger backend. Implements the design in
 `../docs/frontend-design.md`: paper/surface/ink ledger aesthetic, Archivo + Public Sans, one
 signature element — the enrollment week grid.
 
@@ -30,6 +30,7 @@ Re-baseline test data between runs with `scripts/dev-reset.ts` + `prisma/seed.ts
 | --- | --- |
 | `npm run dev` | Next dev server on port 5173 (Turbopack) |
 | `npm run build` / `npm start` | Production build / serve on 5173 |
+| `npm run typegen` | Generates Next route types (`LayoutProps`/`PageProps`); required before `typecheck` on a fresh checkout |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint (next config) |
 | `npm run test` | Vitest (pure-logic suites in `src/tests/`) |

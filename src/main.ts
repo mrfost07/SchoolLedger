@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   }
 
   await app.listen({ port: config.port, host: '0.0.0.0' });
-  logger.info({ port: config.port, env: config.nodeEnv }, 'StudentsPortal API listening');
+  logger.info({ port: config.port, env: config.nodeEnv }, 'SchoolLedger API listening');
 
   let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {

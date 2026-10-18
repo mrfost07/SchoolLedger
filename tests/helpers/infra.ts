@@ -13,7 +13,7 @@ export interface TestInfra {
   resetDatabase(): Promise<void>;
 }
 
-const globalRef = globalThis as unknown as { __studentsPortalInfra?: Promise<TestInfra> };
+const globalRef = globalThis as unknown as { __schoolLedgerInfra?: Promise<TestInfra> };
 
 const PG_PORT = Number.parseInt(process.env.TEST_PG_PORT ?? '23457', 10);
 
@@ -30,8 +30,8 @@ const step = (message: string): void => {
  * file gets a clean database via `resetDatabase()`.
  */
 export function getTestInfra(): Promise<TestInfra> {
-  globalRef.__studentsPortalInfra ??= start();
-  return globalRef.__studentsPortalInfra;
+  globalRef.__schoolLedgerInfra ??= start();
+  return globalRef.__schoolLedgerInfra;
 }
 
 async function start(): Promise<TestInfra> {
@@ -41,7 +41,7 @@ async function start(): Promise<TestInfra> {
   const { PrismaClient } = await import('@prisma/client');
   const { default: RedisClient } = await import('ioredis');
 
-  const dataDir = mkdtempSync(join(tmpdir(), 'studentsportal-pg-'));
+  const dataDir = mkdtempSync(join(tmpdir(), 'schoolledger-pg-'));
   const pg = new EmbeddedPostgres({
     databaseDir: dataDir,
     user: 'postgres',
@@ -54,9 +54,9 @@ async function start(): Promise<TestInfra> {
   step('starting postgres');
   await pg.start();
   step('creating database');
-  await pg.createDatabase('portal_test');
+  await pg.createDatabase('schoolledger_test');
 
-  const databaseUrl = `postgresql://postgres:postgres@localhost:${PG_PORT}/portal_test`;
+  const databaseUrl = `postgresql://postgres:postgres@localhost:${PG_PORT}/schoolledger_test`;
 
   step('running prisma migrate deploy');
   const prismaCli = join(process.cwd(), 'node_modules', 'prisma', 'build', 'index.js');
@@ -76,7 +76,7 @@ async function start(): Promise<TestInfra> {
   await prisma.$queryRaw`SELECT 1`;
   step('infra ready');
 
-  const storageDir = mkdtempSync(join(tmpdir(), 'studentsportal-storage-'));
+  const storageDir = mkdtempSync(join(tmpdir(), 'schoolledger-storage-'));
 
   const cleanup = async (): Promise<void> => {
     await prisma.$disconnect().catch(() => undefined);

@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf
 import QRCode from 'qrcode';
 import type { DocumentSnapshot } from './payload';
 
-const INSTITUTION_NAME = 'StudentsPortal University';
+const INSTITUTION_NAME = 'SchoolLedger University';
 const OFFICE_LINE = 'Office of the University Registrar';
 
 const A4 = { width: 595.28, height: 841.89 };
@@ -197,7 +197,7 @@ export async function renderDocumentPdf(
   doc.setTitle(`${TITLES[snapshot.documentType]} — ${snapshot.student.studentNo}`);
   doc.setAuthor(INSTITUTION_NAME);
   doc.setSubject(`Serial ${snapshot.serialNo}`);
-  doc.setProducer('StudentsPortal Document Service');
+  doc.setProducer('SchoolLedger Document Service');
   const issuedAt = new Date(snapshot.issuedAt);
   doc.setCreationDate(issuedAt);
   doc.setModificationDate(issuedAt);
