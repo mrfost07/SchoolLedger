@@ -209,3 +209,21 @@ Not a reconstruction obligation — the student-facing app built on the audited 
 `schoolId` + RLS on all tenant tables, per-school audit chains, permission registry +
 policy-coverage test, two-school seeds, cross-tenant IDOR suite), keeping the 84-check
 walkthrough green with School #1 = current seed.
+
+---
+
+## 11. Phase 1a — tenant foundations (as-built)
+
+| Item | Artifact | Verification |
+| --- | --- | --- |
+| Tenancy schema | `prisma/migrations/0003_tenancy` — `schools`, `permissions`, `role_templates`, `role_template_permissions`; `schoolId` + FK on all 28 tenant tables; per-school compound uniques (student numbers, code pairs, `[schoolId, schoolYear, termNo]`, `[schoolId, serialNo]`, idempotency `[schoolId, userId, key]`); live-data backfill to School #1 (`MAIN`, fixed UUID) | applied on the dev database with existing rows; `prisma migrate diff` clean (accepted generated-column noise: `section_schedules.timeRange`) |
+| RLS (defense in depth) | 28 policies — `app.system='on' OR <tenant column>::text = current_setting('app.current_school_id', true)`; ENABLE + FORCE; role `schoolledger_app` (NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOBYPASSRLS; password environment-provisioned in `scripts/dev-run.ts` / test infra) | durable probe suite `tests/integration/tenant-isolation.spec.ts` (deny-all without GUCs, `WITH CHECK` insert violation, per-school visibility, system escape hatch). Runtime connections still use the owner role — RLS-GUC propagation is deliberate post-1a debt |
+| App-layer enforcement | `src/core/tenant/context.ts` (ALS store; `runWithTenant` / `runWithSystem` await inside the frame so lazy Prisma promises execute scoped) + `extension.ts` (create injection, AND-merge filters, inline unique-where merge for update/delete/upsert, `findUnique` post-verify, fail-closed `TENANT_CONTEXT_MISSING`) | isolation-suite extension block: scoped reads, null cross-school lookup, refused cross-school delete leaving the row intact, schoolId injection safety net |
+| Request identity | access tokens carry required `schoolId`; `authenticate()` binds the ALS frame and rejects unscoped tokens; membership-aware login (`AUTH_NO_MEMBERSHIP`); background jobs (`workers.ts`, `queues.ts`, inline dispatcher) run under `runWithTenant(schoolId)` / `runWithSystem` | `iam-auth.spec.ts` + all integration flows |
+| Permission registry | `src/modules/iam/permissions.ts` — 48 codes / 6 HE role templates; seeded to `permissions`/`role_templates`; every authenticated route declares `config.permission` (any-of); `onRoute` hook fails startup on missing/unknown codes and enforces the any-of check as a preHandler | 61/61 authenticated routes declared; `npm test` 14 files / 96 tests green; 84-check walkthrough green with enforcement live for all six roles |
+| Two-school seed | `prisma/seed.ts` — School #1 `MAIN` (full demo dataset) + School #2 `NORTH` (minimal; proves per-school code uniqueness), memberships + role assignments for every user, permission registry + templates | `dev-reset` + seed + walkthrough green on the two-school baseline |
+| Cross-tenant IDOR suite | `tests/integration/tenant-isolation.spec.ts` — HTTP probes (reserve, document detail/download paths, admin user creation against a foreign program, grade ledger, sheet read) + extension + RLS blocks | 13 tests green; full suite 96/96 |
+
+**Next:** Phase 1b — school configuration surface (school profile & policy management,
+branding) per the program plan; the 84-check walkthrough remains the regression gate with
+School #1 = current seed.
