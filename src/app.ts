@@ -15,9 +15,11 @@ import { createPrismaClient } from './infra/prisma';
 import { createQueues, createBullDispatcher, createInlineDispatcher, type Queues } from './infra/queues';
 import { AuditService } from './modules/audit/audit.service';
 import { IamService } from './modules/iam/iam.service';
+import { IamAdminService } from './modules/iam/iam-admin.service';
 import { HoldsService } from './modules/iam/holds.service';
 import { SessionService } from './modules/iam/sessions';
 import { registerIamRoutes } from './modules/iam/iam.routes';
+import { registerIamAdminRoutes } from './modules/iam/iam-admin.routes';
 import { AcademicsService } from './modules/academics/academics.service';
 import { SectionAccessService } from './modules/academics/guards';
 import { registerAcademicsRoutes } from './modules/academics/academics.routes';
@@ -41,6 +43,7 @@ export interface ComposedServices {
   audit: AuditService;
   holds: HoldsService;
   iam: IamService;
+  iamAdmin: IamAdminService;
   sectionAccess: SectionAccessService;
   academics: AcademicsService;
   grading: GradingService;
@@ -77,6 +80,7 @@ export function composeServices(ctx: AppContext, options: ComposeOptions = {}): 
   const holds = new HoldsService(prisma, audit);
   const sessions = redis ? new SessionService(redis, config) : null;
   const iam = new IamService(prisma, sessions, audit, config);
+  const iamAdmin = new IamAdminService(prisma, audit, iam, clock);
   const sectionAccess = new SectionAccessService(prisma, clock);
   const academics = new AcademicsService(prisma, audit);
   const grading = new GradingService(prisma, audit, sectionAccess, clock, school);
@@ -107,6 +111,7 @@ export function composeServices(ctx: AppContext, options: ComposeOptions = {}): 
     audit,
     holds,
     iam,
+    iamAdmin,
     sectionAccess,
     academics,
     grading,
@@ -207,7 +212,7 @@ export function buildApp(ctx: AppContext, services: ComposedServices): AppServer
     routeOptions.preHandler = [
       ...handlers,
       async (request) => {
-        requirePermission(request, ctx.config, codes);
+        await requirePermission(request, ctx.config, codes, ctx.prisma);
       },
     ];
   });
@@ -268,6 +273,7 @@ export function buildApp(ctx: AppContext, services: ComposedServices): AppServer
     );
 
     registerIamRoutes(routes, ctx, { iam: services.iam, holds: services.holds });
+    registerIamAdminRoutes(routes, ctx, { admin: services.iamAdmin });
 
     // Live OpenAPI document (v9 of @fastify/swagger delegates UI/route serving
     // to @fastify/swagger-ui, which we do not ship). Hidden from its own spec.

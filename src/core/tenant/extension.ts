@@ -13,6 +13,7 @@ export const TENANT_MODELS: Readonly<Record<string, string>> = {
   SchoolPolicy: 'schoolId',
   Membership: 'schoolId',
   RoleAssignment: 'schoolId',
+  Invitation: 'schoolId',
   StudentProfile: 'schoolId',
   StudentHold: 'schoolId',
   AuditLog: 'schoolId',

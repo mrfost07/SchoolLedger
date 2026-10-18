@@ -8,7 +8,7 @@ import type { IamService } from './iam.service';
 import type { HoldsService } from './holds.service';
 import { PASSWORD_MIN_LENGTH } from './passwords';
 
-const RoleSchema = Type.Union([
+export const RoleSchema = Type.Union([
   Type.Literal('STUDENT'),
   Type.Literal('INSTRUCTOR'),
   Type.Literal('PROGRAM_CHAIR'),
@@ -19,7 +19,7 @@ const RoleSchema = Type.Union([
 
 const HoldTypeSchema = Type.Union([Type.Literal('FINANCIAL'), Type.Literal('DISCIPLINARY'), Type.Literal('DOCUMENTARY')]);
 
-const TokensSchema = Type.Object({
+export const TokensSchema = Type.Object({
   tokenType: Type.Literal('Bearer'),
   accessToken: Type.String(),
   refreshToken: Type.String(),

@@ -1,8 +1,9 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { PrismaClient } from '@prisma/client';
 import { ErrorCodes, AppError } from '../errors/taxonomy';
 import { verifyJwt, type JwtPayload } from '../crypto/jwt';
 import { setTenantSchool } from '../tenant/context';
-import { ROLE_TEMPLATES } from '../../modules/iam/permissions';
+import { PERMISSIONS, ROLE_TEMPLATES } from '../../modules/iam/permissions';
 import type { Env } from '../../config/env';
 
 export type Role = 'STUDENT' | 'INSTRUCTOR' | 'PROGRAM_CHAIR' | 'REGISTRAR' | 'CASHIER' | 'ADMIN';
@@ -72,9 +73,9 @@ export function requireRoles(
 
 /**
  * Built-in HE permission resolution (ADR-0004). Permissions are data: routes
- * declare `config.permission`; role templates grant them. School-specific
- * overrides via `role_templates` rows (school policy mode) land in the
- * configuration phase — until then enforcement reads the seeded registry.
+ * declare `config.permission`; role templates grant them. Enrollment reads
+ * school-specific `role_templates` overrides first, then the school-less
+ * default rows, then falls back to this seeded registry (empty DBs, tests).
  */
 const HE_PERMISSIONS_BY_ROLE: ReadonlyMap<string, ReadonlySet<string>> = new Map(
   ROLE_TEMPLATES.filter((template) => template.mode === 'HE').map((template) => [
@@ -83,23 +84,64 @@ const HE_PERMISSIONS_BY_ROLE: ReadonlyMap<string, ReadonlySet<string>> = new Map
   ]),
 );
 
-export function effectivePermissions(roles: readonly string[]): Set<string> {
+export type PermissionResolverPrisma = Pick<PrismaClient, 'schoolPolicy' | 'roleTemplate'>;
+
+/** One resolution per request: the token's roles cannot change mid-request. */
+const requestPermissionCache = new WeakMap<FastifyRequest, Map<string, Promise<Set<string>>>>();
+
+async function resolveEffectivePermissions(
+  prisma: PermissionResolverPrisma,
+  schoolId: string,
+  roles: readonly string[],
+): Promise<Set<string>> {
+  // ADMIN is non-overridable: always the full registry (ADR-0004).
+  if (roles.includes('ADMIN')) {
+    return new Set(PERMISSIONS.map((permission) => permission.code));
+  }
+  const policy = await prisma.schoolPolicy.findUnique({ where: { schoolId }, select: { mode: true } });
+  const mode = policy?.mode ?? 'HE';
+  const rows = await prisma.roleTemplate.findMany({
+    where: { mode, roleCode: { in: [...roles] }, OR: [{ schoolId }, { schoolId: null }] },
+    select: {
+      schoolId: true,
+      roleCode: true,
+      permissions: { select: { permissionCode: true } },
+    },
+  });
+  const schoolRows = new Map<string, Set<string>>();
+  const defaultRows = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const target = row.schoolId === null ? defaultRows : schoolRows;
+    target.set(row.roleCode, new Set(row.permissions.map((permission) => permission.permissionCode)));
+  }
   const permissions = new Set<string>();
   for (const role of roles) {
-    const granted = HE_PERMISSIONS_BY_ROLE.get(role);
+    const granted = schoolRows.get(role) ?? defaultRows.get(role) ?? HE_PERMISSIONS_BY_ROLE.get(role);
     if (granted) for (const code of granted) permissions.add(code);
   }
   return permissions;
 }
 
 /** Any-of guard: passes when the caller holds at least one of `codes`. */
-export function requirePermission(
+export async function requirePermission(
   request: FastifyRequest,
   config: Pick<Env, 'jwtAccessSecret'>,
   codes: readonly string[],
-): AuthUser {
+  prisma: PermissionResolverPrisma,
+): Promise<AuthUser> {
   const auth = requireAuth(request, config);
-  const permissions = effectivePermissions(auth.roles);
+  let byKey = requestPermissionCache.get(request);
+  if (!byKey) {
+    byKey = new Map();
+    requestPermissionCache.set(request, byKey);
+  }
+  const key = `${auth.schoolId}:${auth.roles.join(',')}`;
+  let pending = byKey.get(key);
+  if (!pending) {
+    pending = resolveEffectivePermissions(prisma, auth.schoolId, auth.roles);
+    byKey.set(key, pending);
+  }
+  const permissions = await pending;
   if (!codes.some((code) => permissions.has(code))) {
     throw new AppError(ErrorCodes.FORBIDDEN, `Requires permission: ${codes.join(' or ')}`);
   }

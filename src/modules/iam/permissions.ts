@@ -14,7 +14,9 @@ export interface PermissionSpec {
   description: string;
 }
 
-export type RoleCode = 'STUDENT' | 'INSTRUCTOR' | 'PROGRAM_CHAIR' | 'REGISTRAR' | 'CASHIER' | 'ADMIN';
+export const ROLE_CODES = ['STUDENT', 'INSTRUCTOR', 'PROGRAM_CHAIR', 'REGISTRAR', 'CASHIER', 'ADMIN'] as const;
+
+export type RoleCode = (typeof ROLE_CODES)[number];
 
 export const PERMISSIONS: readonly PermissionSpec[] = [
   // academics
@@ -72,6 +74,9 @@ export const PERMISSIONS: readonly PermissionSpec[] = [
   { code: 'iam.holds.manage', module: 'iam', description: 'Create/lift student holds' },
   { code: 'iam.holds.view', module: 'iam', description: 'Read student holds' },
   { code: 'iam.students.view', module: 'iam', description: 'Read student profiles' },
+  { code: 'iam.memberships.manage', module: 'iam', description: 'Suspend/activate memberships and change role assignments' },
+  { code: 'iam.invitations.manage', module: 'iam', description: 'Create/list/revoke user invitations' },
+  { code: 'iam.templates.manage', module: 'iam', description: 'Read the permission registry and manage per-school role-template overrides' },
 
   // audit
   { code: 'audit.read', module: 'audit', description: 'Read audit logs' },

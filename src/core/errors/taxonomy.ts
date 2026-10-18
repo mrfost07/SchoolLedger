@@ -30,6 +30,8 @@ export const ErrorCodes = {
   REFRESH_TOKEN_REUSED: 'REFRESH_TOKEN_REUSED',
   STEP_UP_REQUIRED: 'STEP_UP_REQUIRED',
   STEP_UP_MFA_NOT_ENROLLED: 'STEP_UP_MFA_NOT_ENROLLED',
+  INVITATION_INVALID: 'INVITATION_INVALID',
+  INVITATION_EXPIRED: 'INVITATION_EXPIRED',
 
   // Clearance / holds
   STUDENT_CLEARANCE_HOLD: 'STUDENT_CLEARANCE_HOLD',
@@ -126,7 +128,7 @@ function defaultStatus(code: ErrorCode): number {
   ) {
     return 403;
   }
-  if (code === ErrorCodes.NOT_FOUND || code === ErrorCodes.ROOM_NOT_FOUND || code === ErrorCodes.DOCUMENT_NOT_FOUND) {
+  if (code === ErrorCodes.NOT_FOUND || code === ErrorCodes.ROOM_NOT_FOUND || code === ErrorCodes.DOCUMENT_NOT_FOUND || code === ErrorCodes.INVITATION_INVALID) {
     return 404;
   }
   if (code === ErrorCodes.VALIDATION_FAILED || code === ErrorCodes.DAG_SELF_REFERENCE || code === ErrorCodes.IDEMPOTENCY_KEY_REQUIRED)
@@ -166,7 +168,8 @@ function defaultStatus(code: ErrorCode): number {
     code === ErrorCodes.STUDENT_PROFILE_REQUIRED ||
     code === ErrorCodes.AUTH_MFA_ALREADY_ENABLED ||
     code === ErrorCodes.AUTH_MFA_NOT_SETUP ||
-    code === ErrorCodes.AUTH_ACCOUNT_DISABLED
+    code === ErrorCodes.AUTH_ACCOUNT_DISABLED ||
+    code === ErrorCodes.INVITATION_EXPIRED
   ) {
     return 422;
   }

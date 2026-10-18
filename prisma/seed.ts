@@ -84,11 +84,14 @@ async function seedPermissionRegistry(prisma: PrismaClient): Promise<void> {
     });
   }
   for (const spec of ROLE_TEMPLATES) {
-    const template = await prisma.roleTemplate.upsert({
-      where: { mode_roleCode: { mode: spec.mode, roleCode: spec.roleCode } },
-      update: {},
-      create: { mode: spec.mode, roleCode: spec.roleCode },
+    // No composite unique anymore (Postgres NULLs are distinct): default rows
+    // are addressed by (mode, roleCode, schoolId IS NULL).
+    let template = await prisma.roleTemplate.findFirst({
+      where: { mode: spec.mode, roleCode: spec.roleCode, schoolId: null },
     });
+    if (!template) {
+      template = await prisma.roleTemplate.create({ data: { mode: spec.mode, roleCode: spec.roleCode } });
+    }
     await prisma.roleTemplatePermission.deleteMany({ where: { templateId: template.id } });
     if (spec.permissions.length > 0) {
       await prisma.roleTemplatePermission.createMany({

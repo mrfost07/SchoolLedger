@@ -73,6 +73,8 @@ model School {
   documentRequests   DocumentRequest[]
   downloadEvents     DocumentDownloadEvent[]
   roleAssignments    RoleAssignment[]
+  roleTemplates      RoleTemplate[]
+  invitations        Invitation[]
 
   @@map("schools")
 }
@@ -135,7 +137,8 @@ model RoleAssignment {
 }
 
 // Permission registry (ADR-0004): permissions are data; routes declare them;
-// role templates grant them per school mode.
+// role templates grant them per school mode. A template row with `schoolId`
+// overrides the school-less default row for that school (Phase 2).
 model Permission {
   code        String @id
   module      String
@@ -147,14 +150,51 @@ model Permission {
 }
 
 model RoleTemplate {
-  id       String     @id @default(uuid()) @db.Uuid
+  id       String      @id @default(uuid()) @db.Uuid
   mode     SchoolMode
   roleCode String
+  schoolId String?     @db.Uuid
+
+  school School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   permissions RoleTemplatePermission[]
 
-  @@unique([mode, roleCode])
+  // No @@unique here: Postgres treats NULLs as distinct, so the default rows
+  // (schoolId IS NULL) and school overrides each get a partial unique index —
+  // see prisma/migrations/0005_iam_lifecycle/migration.sql.
   @@map("role_templates")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+// Provisioning (ADR-0002): invitation or admin-created credentials. The raw
+// token is shown once at creation; only its SHA-256 hash is stored.
+model Invitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  schoolId       String           @db.Uuid
+  email          String
+  firstName      String
+  lastName       String
+  roles          Role[]
+  tokenHash      String           @unique
+  status         InvitationStatus @default(PENDING)
+  invitedById    String           @db.Uuid
+  acceptedUserId String?          @db.Uuid
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime         @default(now())
+
+  school       School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  invitedBy    User   @relation("InvitationInvitedBy", fields: [invitedById], references: [id])
+  acceptedUser User?  @relation("InvitationAcceptedUser", fields: [acceptedUserId], references: [id])
+
+  @@index([schoolId, status])
+  @@index([schoolId, email])
+  @@map("invitations")
 }
 
 model RoleTemplatePermission {
@@ -225,6 +265,9 @@ model User {
 
   documentRequests DocumentRequest[]       @relation("DocumentStudent")
   documentsOrdered DocumentRequest[]       @relation("DocumentRequestedBy")
+
+  invitationsSent     Invitation[] @relation("InvitationInvitedBy")
+  invitationsAccepted Invitation[] @relation("InvitationAcceptedUser")
 
   @@map("users")
 }

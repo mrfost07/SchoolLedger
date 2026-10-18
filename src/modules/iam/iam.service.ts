@@ -116,6 +116,32 @@ export class IamService {
     };
   }
 
+  /**
+   * Grant path for flows that just provisioned credentials (invitation
+   * acceptance): mirrors a password login audit-wise (`auth.login`).
+   */
+  async issueLoginTokensFor(userId: string): Promise<IssuedTokens> {
+    const user = await this.getUserOrThrow(userId);
+    if (user.status !== 'ACTIVE') {
+      throw new AppError(ErrorCodes.AUTH_ACCOUNT_DISABLED, `Account is ${user.status.toLowerCase()}.`);
+    }
+    const membership = await this.resolveMembershipOrNull(userId);
+    if (!membership) {
+      throw new AppError(ErrorCodes.AUTH_NO_MEMBERSHIP, 'This account has no active school membership.');
+    }
+    return runWithTenant(membership.schoolId, async () => {
+      const tokens = await this.issueTokens(user, membership);
+      await this.audit.appendStandalone({
+        actorId: user.id,
+        action: 'auth.login',
+        resourceType: 'user',
+        resourceId: user.id,
+        payload: { method: 'invitation' },
+      });
+      return tokens;
+    });
+  }
+
   // ── User administration ────────────────────────────────────────────────────
 
   async createUser(
