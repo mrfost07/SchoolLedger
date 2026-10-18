@@ -63,8 +63,10 @@ export const PERMISSIONS: readonly PermissionSpec[] = [
   { code: 'documents.view.any', module: 'documents', description: 'List/read any document request' },
   { code: 'documents.download.self', module: 'documents', description: 'Download own documents' },
   { code: 'documents.download.any', module: 'documents', description: 'Download any document' },
+  { code: 'documents.manage.any', module: 'documents', description: 'Revoke/retry document requests for any student' },
 
   // iam
+  { code: 'iam.self.manage', module: 'iam', description: 'Manage own session: logout, step-up MFA, TOTP enrollment' },
   { code: 'iam.users.manage', module: 'iam', description: 'Create/manage users' },
   { code: 'iam.users.list', module: 'iam', description: 'List users' },
   { code: 'iam.holds.manage', module: 'iam', description: 'Create/lift student holds' },
@@ -93,6 +95,8 @@ const STUDENT_PERMISSIONS = [
   'documents.request.self',
   'documents.view.self',
   'documents.download.self',
+  'iam.self.manage',
+  'iam.holds.view',
 ] as const;
 
 const INSTRUCTOR_PERMISSIONS = [
@@ -102,17 +106,23 @@ const INSTRUCTOR_PERMISSIONS = [
   'grading.view.assigned',
   'grading.inc.complete',
   'grading.rectification.request',
+  'enrollment.view.any',
+  'iam.self.manage',
 ] as const;
 
 const PROGRAM_CHAIR_PERMISSIONS = [
   'academics.views.staff',
+  'academics.views.self',
   'grading.view.assigned',
+  'grading.sheet.verify',
   'grading.rectification.endorse',
   'enrollment.view.any',
+  'iam.self.manage',
 ] as const;
 
 const REGISTRAR_PERMISSIONS = [
   'academics.views.staff',
+  'academics.views.self',
   'academics.department.manage',
   'academics.program.manage',
   'academics.curriculum.manage',
@@ -134,15 +144,19 @@ const REGISTRAR_PERMISSIONS = [
   'documents.request.any',
   'documents.view.any',
   'documents.download.any',
+  'documents.manage.any',
+  'iam.self.manage',
   'iam.users.list',
   'iam.holds.view',
   'iam.students.view',
 ] as const;
 
 const CASHIER_PERMISSIONS = [
+  'academics.views.self',
   'enrollment.view.any',
   'fees.view.any',
   'fees.collect',
+  'iam.self.manage',
   'iam.holds.manage',
   'iam.holds.view',
   'iam.students.view',

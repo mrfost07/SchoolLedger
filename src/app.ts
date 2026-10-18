@@ -8,7 +8,9 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { AppContext, BackgroundDispatcher } from './context';
 import type { AppServer } from './core/http/server-types';
 import { registerProblemErrorHandler } from './core/errors/problem';
+import { requirePermission } from './core/http/auth';
 import { runWithStore, runWithTenant } from './core/tenant/context';
+import { PERMISSIONS } from './modules/iam/permissions';
 import { createPrismaClient } from './infra/prisma';
 import { createQueues, createBullDispatcher, createInlineDispatcher, type Queues } from './infra/queues';
 import { AuditService } from './modules/audit/audit.service';
@@ -166,6 +168,43 @@ export function buildApp(ctx: AppContext, services: ComposedServices): AppServer
   });
 
   registerProblemErrorHandler(app);
+
+  // Policy coverage (ADR-0004): every authenticated route must declare
+  // `config.permission` with codes from the registry, and the check is
+  // enforced as a preHandler. Unknown/absent declarations fail app startup.
+  const permissionCodes = new Set(PERMISSIONS.map((permission) => permission.code));
+  app.addHook('onRoute', (routeOptions) => {
+    const security = routeOptions.schema?.security;
+    const authenticated = Array.isArray(security) && security.length > 0;
+    const declared = (routeOptions.config as { permission?: string | string[] } | undefined)?.permission;
+    const label = `${routeOptions.method} ${routeOptions.url}`;
+    if (!authenticated) {
+      if (declared !== undefined) {
+        throw new Error(`Policy coverage: public route ${label} must not declare config.permission.`);
+      }
+      return;
+    }
+    if (declared === undefined) {
+      throw new Error(`Policy coverage: authenticated route ${label} declares no config.permission.`);
+    }
+    const codes = Array.isArray(declared) ? declared : [declared];
+    if (codes.length === 0) {
+      throw new Error(`Policy coverage: authenticated route ${label} declares an empty permission list.`);
+    }
+    for (const code of codes) {
+      if (!permissionCodes.has(code)) {
+        throw new Error(`Policy coverage: route ${label} declares unknown permission '${code}'.`);
+      }
+    }
+    const existing = routeOptions.preHandler;
+    const handlers = existing === undefined ? [] : Array.isArray(existing) ? existing : [existing];
+    routeOptions.preHandler = [
+      ...handlers,
+      async (request) => {
+        requirePermission(request, ctx.config, codes);
+      },
+    ];
+  });
 
   // Tenant context frame (ADR-0001): every request starts with an unbound
   // store; the auth layer binds the school once the JWT is verified. The

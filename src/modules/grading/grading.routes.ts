@@ -45,6 +45,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.put(
     '/api/v1/grading/sections/:sectionId/sheet',
     {
+      config: { permission: 'grading.entries.save' },
       schema: {
         tags: ['Grading'],
         summary: 'Create/update DRAFT grade entries for a section. Assigned INSTRUCTOR (or ADMIN).',
@@ -68,6 +69,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/sections/:sectionId/sheet/submit',
     {
+      config: { permission: 'grading.sheet.submit' },
       schema: {
         tags: ['Grading'],
         summary: 'Submit a DRAFT sheet for verification. Assigned INSTRUCTOR (or ADMIN), step-up MFA required.',
@@ -88,6 +90,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.get(
     '/api/v1/grading/sections/:sectionId/sheet',
     {
+      config: { permission: ['grading.view.assigned', 'grading.view.any'] },
       schema: {
         tags: ['Grading'],
         summary: 'Grade sheet detail (entries + student names). Staff only; INSTRUCTOR must own the section.',
@@ -110,6 +113,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/sheets/:sectionId/verify',
     {
+      config: { permission: 'grading.sheet.verify' },
       schema: {
         tags: ['Grading'],
         summary: 'Verify a SUBMITTED sheet (PROGRAM_CHAIR/ADMIN).',
@@ -127,6 +131,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/sheets/:sectionId/return',
     {
+      config: { permission: ['grading.sheet.verify', 'grading.sheet.post'] },
       schema: {
         tags: ['Grading'],
         summary: 'Return a SUBMITTED/VERIFIED sheet to DRAFT with a note (PROGRAM_CHAIR/REGISTRAR/ADMIN).',
@@ -145,6 +150,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/sheets/:sectionId/post',
     {
+      config: { permission: 'grading.sheet.post' },
       schema: {
         tags: ['Grading'],
         summary: 'Post a VERIFIED sheet to the immutable ledger (REGISTRAR/ADMIN, step-up MFA). This is the point of no return.',
@@ -167,6 +173,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.get(
     '/api/v1/grading/students/:studentId/ledger',
     {
+      config: { permission: ['grading.gwa.view.self', 'grading.gwa.view.any'] },
       schema: {
         tags: ['Grading'],
         summary: 'Full grade ledger incl. superseded versions and hash chain (BSL-302).',
@@ -184,6 +191,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.get(
     '/api/v1/grading/students/:studentId/gwa',
     {
+      config: { permission: ['grading.gwa.view.self', 'grading.gwa.view.any'] },
       schema: {
         tags: ['Grading'],
         summary: 'Term + cumulative GWA, academic standing and latin honors (BSL-306/307/308).',
@@ -203,6 +211,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/rectifications',
     {
+      config: { permission: 'grading.rectification.request' },
       schema: {
         tags: ['Grading'],
         summary: 'Request rectification of a POSTED grade entry. Instructor (own section) or ADMIN.',
@@ -231,6 +240,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/rectifications/:id/endorse',
     {
+      config: { permission: 'grading.rectification.endorse' },
       schema: {
         tags: ['Grading'],
         summary: 'Chair endorsement (PENDING → CHAIR_ENDORSED).',
@@ -249,6 +259,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/rectifications/:id/approve',
     {
+      config: { permission: 'grading.rectification.approve' },
       schema: {
         tags: ['Grading'],
         summary: 'Final approval (CHAIR_ENDORSED → APPROVED). Supersedes the old entry and appends version+1. REGISTRAR/ADMIN + step-up MFA.',
@@ -273,6 +284,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/rectifications/:id/reject',
     {
+      config: { permission: ['grading.rectification.approve', 'grading.rectification.endorse'] },
       schema: {
         tags: ['Grading'],
         summary: 'Reject a PENDING/CHAIR_ENDORSED rectification (Chair/Registrar/Admin).',
@@ -291,6 +303,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/rectifications/:id/cancel',
     {
+      config: { permission: 'grading.rectification.request' },
       schema: {
         tags: ['Grading'],
         summary: 'Cancel your own PENDING rectification request.',
@@ -308,6 +321,13 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.get(
     '/api/v1/grading/rectifications',
     {
+      config: {
+        permission: [
+          'grading.rectification.request',
+          'grading.rectification.endorse',
+          'grading.rectification.approve',
+        ],
+      },
       schema: {
         tags: ['Grading'],
         summary: 'List rectifications (staff). Filter by status and/or target entry.',
@@ -327,6 +347,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/inc/:entryId/complete',
     {
+      config: { permission: 'grading.inc.complete' },
       schema: {
         tags: ['Grading'],
         summary: 'Complete an outstanding INC with a numeric mark (Registrar/Admin + step-up MFA).',
@@ -351,6 +372,7 @@ export function registerGradingRoutes(app: AppServer, ctx: AppContext, services:
   app.post(
     '/api/v1/grading/inc/sweep',
     {
+      config: { permission: 'grading.inc.complete' },
       schema: {
         tags: ['Grading'],
         summary: 'Manually run the expired-INC sweep (ADMIN). The hourly worker runs this automatically.',

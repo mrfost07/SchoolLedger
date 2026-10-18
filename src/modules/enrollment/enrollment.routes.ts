@@ -40,6 +40,7 @@ export function registerEnrollmentRoutes(app: AppServer, ctx: AppContext, servic
   app.get(
     '/api/v1/enrollments/eligibility',
     {
+      config: { permission: ['enrollment.view.self', 'enrollment.view.any'] },
       schema: {
         tags: ['Enrollment'],
         summary: 'Curriculum eligibility: eligible / blocked (with missing prerequisite IDs) / already passed / consumed courses.',
@@ -57,7 +58,7 @@ export function registerEnrollmentRoutes(app: AppServer, ctx: AppContext, servic
   app.post(
     '/api/v1/enrollments/reserve',
     {
-      config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+      config: { rateLimit: { max: 60, timeWindow: '1 minute' }, permission: ['enrollment.reserve', 'enrollment.manage'] },
       schema: {
         tags: ['Enrollment'],
         summary: 'Atomic multi-section slot reservation. Idempotency-Key required.',
@@ -95,6 +96,7 @@ export function registerEnrollmentRoutes(app: AppServer, ctx: AppContext, servic
   app.post(
     '/api/v1/enrollments/drop',
     {
+      config: { permission: ['enrollment.drop', 'enrollment.manage'] },
       schema: {
         tags: ['Enrollment'],
         summary: 'Drop an enrollment item (or leave a waitlist). Triggers waitlist auto-promotion when a slot frees up.',
@@ -116,6 +118,7 @@ export function registerEnrollmentRoutes(app: AppServer, ctx: AppContext, servic
   app.post(
     '/api/v1/enrollments/waitlist',
     {
+      config: { permission: ['enrollment.waitlist.join', 'enrollment.manage'] },
       schema: {
         tags: ['Enrollment'],
         summary: 'Join the FIFO waitlist of a full section.',
@@ -134,6 +137,7 @@ export function registerEnrollmentRoutes(app: AppServer, ctx: AppContext, servic
   app.get(
     '/api/v1/enrollments',
     {
+      config: { permission: ['enrollment.view.self', 'enrollment.view.any'] },
       schema: {
         tags: ['Enrollment'],
         summary: 'Current enrollment for a term (items, sections, assessment).',
@@ -151,6 +155,7 @@ export function registerEnrollmentRoutes(app: AppServer, ctx: AppContext, servic
   app.get(
     '/api/v1/enrollments/sections/:sectionId/waitlist',
     {
+      config: { permission: 'enrollment.view.any' },
       schema: {
         tags: ['Enrollment'],
         summary: 'FIFO waitlist of a section. REGISTRAR/ADMIN/INSTRUCTOR.',
@@ -169,6 +174,7 @@ export function registerEnrollmentRoutes(app: AppServer, ctx: AppContext, servic
   app.post(
     '/api/v1/enrollments/sections/:sectionId/promote',
     {
+      config: { permission: 'enrollment.manage' },
       schema: {
         tags: ['Enrollment'],
         summary: 'Manually run waitlist promotion for a section (worker does this automatically on drops). REGISTRAR/ADMIN.',
@@ -195,6 +201,7 @@ export function registerEnrollmentRoutes(app: AppServer, ctx: AppContext, servic
   app.get(
     '/api/v1/enrollments/:enrollmentId/assessment',
     {
+      config: { permission: ['fees.view.self', 'fees.view.any'] },
       schema: {
         tags: ['Enrollment'],
         summary: 'Immutable tuition assessment breakdown for an enrollment.',
@@ -220,6 +227,7 @@ export function registerEnrollmentRoutes(app: AppServer, ctx: AppContext, servic
   app.post(
     '/api/v1/enrollments/assessments/:assessmentId/pay',
     {
+      config: { permission: 'fees.collect' },
       schema: {
         tags: ['Enrollment'],
         summary: 'Mark an assessment as PAID (freezes the breakdown). CASHIER/ADMIN.',

@@ -162,6 +162,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.post(
     '/api/v1/auth/logout-all',
     {
+      config: { permission: 'iam.self.manage' },
       schema: {
         tags: ['Auth'],
         summary: 'Revoke every session family for the current user.',
@@ -178,7 +179,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.post(
     '/api/v1/auth/step-up',
     {
-      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' }, permission: 'iam.self.manage' },
       schema: {
         tags: ['Auth'],
         summary: 'Step-up MFA: exchange a TOTP code for an access token elevated for 5 minutes.',
@@ -196,6 +197,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.post(
     '/api/v1/auth/totp/setup',
     {
+      config: { permission: 'iam.self.manage' },
       schema: {
         tags: ['Auth'],
         summary: 'Begin TOTP enrollment. Returns the shared secret and otpauth URL.',
@@ -215,6 +217,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.post(
     '/api/v1/auth/totp/enable',
     {
+      config: { permission: 'iam.self.manage' },
       schema: {
         tags: ['Auth'],
         summary: 'Confirm TOTP enrollment with the first generated code.',
@@ -233,6 +236,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.get(
     '/api/v1/auth/me',
     {
+      config: { permission: 'iam.self.manage' },
       schema: {
         tags: ['Auth'],
         summary: 'Current user profile with roles, student profile and MFA state.',
@@ -251,6 +255,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.post(
     '/api/v1/iam/users',
     {
+      config: { permission: 'iam.users.manage' },
       schema: {
         tags: ['IAM'],
         summary: 'Create a user (optionally with a student profile). ADMIN only.',
@@ -286,6 +291,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.get(
     '/api/v1/iam/users',
     {
+      config: { permission: 'iam.users.list' },
       schema: {
         tags: ['IAM'],
         summary: 'List users. ADMIN and REGISTRAR only.',
@@ -313,6 +319,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.post(
     '/api/v1/iam/students/:studentId/holds',
     {
+      config: { permission: 'iam.holds.manage' },
       schema: {
         tags: ['IAM'],
         summary: 'Place a hold on a student. FINANCIAL: CASHIER/REGISTRAR/ADMIN; DISCIPLINARY & DOCUMENTARY: REGISTRAR/ADMIN.',
@@ -347,6 +354,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.post(
     '/api/v1/iam/holds/:holdId/lift',
     {
+      config: { permission: 'iam.holds.manage' },
       schema: {
         tags: ['IAM'],
         summary: 'Lift a hold. REGISTRAR/ADMIN (FINANCIAL also CASHIER).',
@@ -369,6 +377,7 @@ export function registerIamRoutes(app: AppServer, ctx: AppContext, services: Iam
   app.get(
     '/api/v1/iam/students/:studentId/holds',
     {
+      config: { permission: 'iam.holds.view' },
       schema: {
         tags: ['IAM'],
         summary: 'List holds of a student.',

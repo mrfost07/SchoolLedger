@@ -13,7 +13,10 @@ export function registerDocumentRoutes(app: AppServer, ctx: AppContext, document
   app.post(
     '/api/v1/documents/requests',
     {
-      config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+      config: {
+        rateLimit: { max: 30, timeWindow: '1 minute' },
+        permission: ['documents.request.self', 'documents.request.any'],
+      },
       schema: {
         tags: ['Documents'],
         summary: 'Request a document (COR, grade slip, TOR, certificates). Snapshot is frozen at request time. Idempotency-Key required.',
@@ -54,6 +57,7 @@ export function registerDocumentRoutes(app: AppServer, ctx: AppContext, document
   app.get(
     '/api/v1/documents/requests',
     {
+      config: { permission: ['documents.view.self', 'documents.view.any'] },
       schema: {
         tags: ['Documents'],
         summary: 'List document requests. STUDENT sees own; REGISTRAR/ADMIN may filter by student.',
@@ -78,6 +82,7 @@ export function registerDocumentRoutes(app: AppServer, ctx: AppContext, document
   app.get(
     '/api/v1/documents/requests/:id',
     {
+      config: { permission: ['documents.view.self', 'documents.view.any'] },
       schema: {
         tags: ['Documents'],
         summary: 'Document request detail (metadata; the frozen snapshot is rendered into the PDF, not exposed as JSON).',
@@ -95,6 +100,7 @@ export function registerDocumentRoutes(app: AppServer, ctx: AppContext, document
   app.get(
     '/api/v1/documents/requests/:id/download',
     {
+      config: { permission: ['documents.download.self', 'documents.download.any'] },
       schema: {
         tags: ['Documents'],
         summary: `Presigned download URL (TTL ${ctx.config.presignTtlSeconds}s). READY documents only; every download is audited.`,
@@ -116,6 +122,7 @@ export function registerDocumentRoutes(app: AppServer, ctx: AppContext, document
   app.post(
     '/api/v1/documents/requests/:id/revoke',
     {
+      config: { permission: 'documents.manage.any' },
       schema: {
         tags: ['Documents'],
         summary: 'Revoke a document (REGISTRAR/ADMIN). Verification reports it as invalid immediately.',
@@ -134,6 +141,7 @@ export function registerDocumentRoutes(app: AppServer, ctx: AppContext, document
   app.post(
     '/api/v1/documents/requests/:id/retry',
     {
+      config: { permission: 'documents.manage.any' },
       schema: {
         tags: ['Documents'],
         summary: 'Re-queue a FAILED document render (REGISTRAR/ADMIN).',

@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ErrorCodes, AppError } from '../errors/taxonomy';
 import { verifyJwt, type JwtPayload } from '../crypto/jwt';
 import { setTenantSchool } from '../tenant/context';
+import { ROLE_TEMPLATES } from '../../modules/iam/permissions';
 import type { Env } from '../../config/env';
 
 export type Role = 'STUDENT' | 'INSTRUCTOR' | 'PROGRAM_CHAIR' | 'REGISTRAR' | 'CASHIER' | 'ADMIN';
@@ -65,6 +66,42 @@ export function requireRoles(
   const allowed = roles.length === 0 || auth.roles.some((role) => roles.includes(role));
   if (!allowed) {
     throw new AppError(ErrorCodes.FORBIDDEN, `Requires one of roles: ${roles.join(', ')}`);
+  }
+  return auth;
+}
+
+/**
+ * Built-in HE permission resolution (ADR-0004). Permissions are data: routes
+ * declare `config.permission`; role templates grant them. School-specific
+ * overrides via `role_templates` rows (school policy mode) land in the
+ * configuration phase — until then enforcement reads the seeded registry.
+ */
+const HE_PERMISSIONS_BY_ROLE: ReadonlyMap<string, ReadonlySet<string>> = new Map(
+  ROLE_TEMPLATES.filter((template) => template.mode === 'HE').map((template) => [
+    template.roleCode as string,
+    new Set<string>(template.permissions),
+  ]),
+);
+
+export function effectivePermissions(roles: readonly string[]): Set<string> {
+  const permissions = new Set<string>();
+  for (const role of roles) {
+    const granted = HE_PERMISSIONS_BY_ROLE.get(role);
+    if (granted) for (const code of granted) permissions.add(code);
+  }
+  return permissions;
+}
+
+/** Any-of guard: passes when the caller holds at least one of `codes`. */
+export function requirePermission(
+  request: FastifyRequest,
+  config: Pick<Env, 'jwtAccessSecret'>,
+  codes: readonly string[],
+): AuthUser {
+  const auth = requireAuth(request, config);
+  const permissions = effectivePermissions(auth.roles);
+  if (!codes.some((code) => permissions.has(code))) {
+    throw new AppError(ErrorCodes.FORBIDDEN, `Requires permission: ${codes.join(' or ')}`);
   }
   return auth;
 }

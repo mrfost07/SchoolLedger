@@ -27,6 +27,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/departments',
     {
+      config: { permission: 'academics.department.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Create a department. REGISTRAR/ADMIN.',
@@ -45,6 +46,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/programs',
     {
+      config: { permission: 'academics.program.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Create a program. REGISTRAR/ADMIN.',
@@ -68,6 +70,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/programs/:programId/curricula',
     {
+      config: { permission: 'academics.curriculum.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Create a curriculum version (prospectus). REGISTRAR/ADMIN.',
@@ -96,6 +99,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/curricula/:curriculumVersionId/status',
     {
+      config: { permission: 'academics.curriculum.status' },
       schema: {
         tags: ['Academics'],
         summary: 'Transition curriculum status DRAFT → ACTIVE → ARCHIVED. REGISTRAR/ADMIN.',
@@ -114,6 +118,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/courses',
     {
+      config: { permission: 'academics.course.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Create a course. REGISTRAR/ADMIN.',
@@ -138,6 +143,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/curricula/:curriculumVersionId/courses',
     {
+      config: { permission: 'academics.curriculum.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Place a course in the curriculum grid. REGISTRAR/ADMIN.',
@@ -174,6 +180,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/requisites',
     {
+      config: { permission: 'academics.requisite.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Create/update a course requisite. Rejected when it would introduce a cycle (DAG_CYCLE_DETECTED).',
@@ -200,6 +207,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.delete(
     '/api/v1/academics/requisites/:requisiteId',
     {
+      config: { permission: 'academics.requisite.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Remove a requisite. REGISTRAR/ADMIN.',
@@ -218,6 +226,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.get(
     '/api/v1/academics/curricula/:curriculumVersionId/graph',
     {
+      config: { permission: ['academics.views.staff', 'academics.views.self'] },
       schema: {
         tags: ['Academics'],
         summary: 'Curriculum DAG view: courses, requisites, topological order, unlock counts.',
@@ -257,6 +266,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/terms',
     {
+      config: { permission: 'academics.term.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Create an academic term with enrollment and grading windows. REGISTRAR/ADMIN.',
@@ -293,6 +303,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/terms/:termId/status',
     {
+      config: { permission: 'academics.term.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Advance the term state machine (PLANNING → ENROLLMENT → ADD_DROP → ONGOING → GRADING → CLOSED).',
@@ -319,6 +330,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.get(
     '/api/v1/academics/terms',
     {
+      config: { permission: ['academics.views.self', 'academics.views.staff'] },
       schema: {
         tags: ['Academics'],
         summary: 'List terms.',
@@ -337,6 +349,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/rooms',
     {
+      config: { permission: 'academics.room.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Create a room. REGISTRAR/ADMIN.',
@@ -359,6 +372,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.get(
     '/api/v1/academics/rooms',
     {
+      config: { permission: ['academics.views.self', 'academics.views.staff'] },
       schema: {
         tags: ['Academics'],
         summary: 'List rooms.',
@@ -377,6 +391,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/sections',
     {
+      config: { permission: 'academics.section.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Create a section with conflict-checked schedules. REGISTRAR/ADMIN.',
@@ -402,6 +417,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/sections/:sectionId/schedules',
     {
+      config: { permission: 'academics.section.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Add a schedule slot to a section (conflict-checked, GiST-enforced). REGISTRAR/ADMIN.',
@@ -421,6 +437,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.delete(
     '/api/v1/academics/schedules/:scheduleId',
     {
+      config: { permission: 'academics.section.manage' },
       schema: {
         tags: ['Academics'],
         summary: 'Remove a schedule slot. REGISTRAR/ADMIN.',
@@ -439,6 +456,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.post(
     '/api/v1/academics/sections/:sectionId/status',
     {
+      config: { permission: 'academics.section.status' },
       schema: {
         tags: ['Academics'],
         summary: 'Open/close/cancel a section. REGISTRAR/ADMIN.',
@@ -457,6 +475,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.get(
     '/api/v1/academics/terms/:termId/sections',
     {
+      config: { permission: ['academics.views.self', 'academics.views.staff'] },
       schema: {
         tags: ['Academics'],
         summary: 'List sections of a term (optionally filtered by course) with schedules and live counts.',
@@ -475,6 +494,7 @@ export function registerAcademicsRoutes(app: AppServer, ctx: AppContext, service
   app.get(
     '/api/v1/academics/sections/:sectionId',
     {
+      config: { permission: ['academics.views.self', 'academics.views.staff'] },
       schema: {
         tags: ['Academics'],
         summary: 'Section detail with course, term, instructor and schedules.',
