@@ -1,18 +1,19 @@
 import { Decimal } from 'decimal.js';
 import type { GradeEntryStatus, GradeLedgerEntry, GradeSheet, PrismaClient } from '@prisma/client';
-import type { Env } from '../../config/env';
 import type { Clock } from '../../core/time/clock';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
 import { requireTenantSchoolId } from '../../core/tenant/context';
 import { addDays } from '../../core/time/clock';
 import type { AuditService } from '../audit/audit.service';
 import type { SectionAccessService } from '../academics/guards';
+import type { SchoolService } from '../school/school.service';
 import { assertEntryTransition, assertSheetTransition, markFromEntry, validateMark, type Mark } from './state-machine';
 import { gradeEntryHash, markToString } from './ledger-hash';
 import {
   ACADEMIC_DECIMAL,
   computeGwa,
   computeStanding,
+  DEFAULT_STANDING_CONFIG,
   latinHonors,
   GWA_SCALE,
   type AcademicStanding,
@@ -46,15 +47,7 @@ export class GradingService {
     private readonly audit: AuditService,
     private readonly sectionAccess: SectionAccessService,
     private readonly clock: Clock,
-    private readonly config: Pick<
-      Env,
-      | 'incCompletionDays'
-      | 'incDefaultGrade'
-      | 'deansListerMaxGwa'
-      | 'honorsSummaMax'
-      | 'honorsMagnaMax'
-      | 'honorsCumLaudeMax'
-    >,
+    private readonly school: SchoolService,
   ) {}
 
   // ── Sheet lifecycle (BSL-302) ──────────────────────────────────────────────
@@ -220,6 +213,7 @@ export class GradingService {
   async postSheet(actorId: string, sectionId: string): Promise<GradeSheet> {
     const now = this.clock.now();
     const postedAtIso = now.toISOString();
+    const policy = await this.school.resolvePolicy();
 
     return this.prisma.$transaction(async (tx) => {
       const sheet = await tx.gradeSheet.findUnique({ where: { sectionId }, include: { entries: true } });
@@ -252,7 +246,7 @@ export class GradingService {
             status: 'POSTED',
             prevHash,
             entryHash,
-            incDeadlineAt: entry.isInc ? addDays(now, this.config.incCompletionDays) : null,
+            incDeadlineAt: entry.isInc ? addDays(now, policy.incCompletionDays) : null,
           },
         });
       }
@@ -318,6 +312,7 @@ export class GradingService {
 
   /** Term + cumulative GWA, academic standing and honors (BSL-306, BSL-307, BSL-308). */
   async computeStudentGwa(studentId: string): Promise<StudentGwaReport> {
+    const policy = await this.school.resolvePolicy();
     const entries = await this.activeEntries(studentId);
 
     const byTerm = new Map<string, { code: string; entries: typeof entries }>();
@@ -360,15 +355,16 @@ export class GradingService {
     const cumulative = computeGwa(cumulativeInput);
 
     // Probation streak: count consecutive PRIOR terms with a failing mark
-    // (> 3.00) or a term GWA > 3.00. The latest term is intentionally excluded —
-    // computeStanding adds the current term itself (`probationStreak + 1`).
+    // (> passing grade) or a term GWA above it. The latest term is intentionally
+    // excluded — computeStanding adds the current term itself (`probationStreak + 1`).
+    const failureThreshold = new ACADEMIC_DECIMAL(policy.passingGradeMax);
     let probationStreak = 0;
     for (let index = terms.length - 2; index >= 0; index -= 1) {
       const term = terms[index]!;
       const bucket = byTerm.get(term.termId)!;
       const marks = bucket.entries.filter((entry) => !entry.isInc && entry.value).map((entry) => entry.value!.toString());
-      const hasFailure = marks.some((mark) => new ACADEMIC_DECIMAL(mark).greaterThan(3.0));
-      const gwaOver = term.gwa !== null && new ACADEMIC_DECIMAL(term.gwa).greaterThan(3.0);
+      const hasFailure = marks.some((mark) => new ACADEMIC_DECIMAL(mark).greaterThan(failureThreshold));
+      const gwaOver = term.gwa !== null && new ACADEMIC_DECIMAL(term.gwa).greaterThan(failureThreshold);
       if (hasFailure || gwaOver) probationStreak += 1;
       else break;
     }
@@ -379,20 +375,27 @@ export class GradingService {
       ? latestBucket.entries.filter((entry) => !entry.isInc && entry.value).map((entry) => entry.value!.toString())
       : [];
 
-    const standing = computeStanding({
-      termGwa: latestTerm?.gwa ? new ACADEMIC_DECIMAL(latestTerm.gwa) : null,
-      cumulativeGwa: cumulative.gwa,
-      termUnits: latestTerm?.units ?? 0,
-      termMarks: latestMarks,
-      hasInc: (latestTerm?.incCount ?? 0) > 0,
-      probationStreak,
-    });
+    const standing = computeStanding(
+      {
+        termGwa: latestTerm?.gwa ? new ACADEMIC_DECIMAL(latestTerm.gwa) : null,
+        cumulativeGwa: cumulative.gwa,
+        termUnits: latestTerm?.units ?? 0,
+        termMarks: latestMarks,
+        hasInc: (latestTerm?.incCount ?? 0) > 0,
+        probationStreak,
+      },
+      {
+        ...DEFAULT_STANDING_CONFIG,
+        deansListerMaxGwa: policy.deansListerMaxGwa,
+        passingGradeMax: policy.passingGradeMax,
+      },
+    );
 
     const allMarks = entries.filter((entry) => !entry.isInc && entry.value).map((entry) => entry.value!.toString());
     const honors = latinHonors(cumulative.gwa, allMarks, 1, {
-      summaMax: this.config.honorsSummaMax,
-      magnaMax: this.config.honorsMagnaMax,
-      cumLaudeMax: this.config.honorsCumLaudeMax,
+      summaMax: policy.honorsSummaMax,
+      magnaMax: policy.honorsMagnaMax,
+      cumLaudeMax: policy.honorsCumLaudeMax,
       minMark: '2.50',
       minResidencyRatio: 0.75,
     });

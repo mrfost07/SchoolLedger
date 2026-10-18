@@ -37,6 +37,12 @@ model School {
   code      String       @unique
   name      String
   status    SchoolStatus @default(ACTIVE)
+  address      String?
+  contactEmail String?
+  contactPhone String?
+  website      String?
+  logoUrl      String?
+  brandColor   String?
   createdAt DateTime     @default(now())
 
   policy      SchoolPolicy?
@@ -80,7 +86,11 @@ model SchoolPolicy {
   maxAcademicUnits  Int     @default(30)
   passingGradeMax   Decimal @default(3.0) @db.Decimal(3, 2)
   incDefaultGrade   Decimal @default(5.0) @db.Decimal(3, 2)
+  incCompletionDays Int     @default(365)
   deansListerMaxGwa Decimal @default(1.45) @db.Decimal(3, 2)
+  honorsSummaMax    Decimal @default(1.20) @db.Decimal(3, 2)
+  honorsMagnaMax    Decimal @default(1.45) @db.Decimal(3, 2)
+  honorsCumLaudeMax Decimal @default(1.75) @db.Decimal(3, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

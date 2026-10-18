@@ -7,7 +7,7 @@ import type { AuditService } from '../audit/audit.service';
 import { addDays } from '../../core/time/clock';
 import { gradeEntryHash } from './ledger-hash';
 import { validateMark, type Mark } from './state-machine';
-import type { Env } from '../../config/env';
+import type { SchoolService } from '../school/school.service';
 
 export interface CreateRectificationInput {
   entryId: string;
@@ -32,7 +32,7 @@ export class RectificationService {
     private readonly prisma: PrismaClient,
     private readonly audit: AuditService,
     private readonly clock: Clock,
-    private readonly config: Pick<Env, 'incCompletionDays'>,
+    private readonly school: SchoolService,
   ) {}
 
   async create(actorId: string, actorRoles: string[], input: CreateRectificationInput): Promise<GradeRectification> {
@@ -117,6 +117,7 @@ export class RectificationService {
 
   async approve(actorId: string, rectificationId: string, note?: string): Promise<{ rectification: GradeRectification; newEntryId: string }> {
     const now = this.clock.now();
+    const policy = await this.school.resolvePolicy();
     return this.prisma.$transaction(async (tx) => {
       const rectification = await tx.gradeRectification.findUnique({ where: { id: rectificationId } });
       if (!rectification) throw new AppError(ErrorCodes.NOT_FOUND, 'Rectification not found.');
@@ -160,7 +161,7 @@ export class RectificationService {
           version: target.version + 1,
           value: mark.kind === 'NUMERIC' ? mark.value : null,
           isInc: mark.kind === 'INC',
-          incDeadlineAt: mark.kind === 'INC' ? addDays(now, this.config.incCompletionDays) : null,
+          incDeadlineAt: mark.kind === 'INC' ? addDays(now, policy.incCompletionDays) : null,
           prevEntryId: target.id,
           prevHash: target.entryHash,
           entryHash,

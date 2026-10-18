@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js';
 import type { PrismaClient } from '@prisma/client';
-import type { Env } from '../../config/env';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
+import type { SchoolService } from '../school/school.service';
 import { unlockCounts, type RequisiteEdge } from '../academics/dag';
 
 export interface PassedCourse {
@@ -57,11 +57,13 @@ export interface EligibilityResult {
 export class EligibilityService {
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly config: Pick<Env, 'passingGradeMax'>,
+    private readonly school: SchoolService,
   ) {}
 
-  passingThreshold(): Decimal {
-    return new Decimal(this.config.passingGradeMax);
+  /** Effective passing-grade threshold for the current tenant. */
+  async passingThreshold(): Promise<Decimal> {
+    const policy = await this.school.resolvePolicy();
+    return new Decimal(policy.passingGradeMax);
   }
 
   async loadState(studentId: string, termId: string): Promise<StudentAcademicState> {
@@ -113,10 +115,10 @@ export class EligibilityService {
     };
   }
 
-  private isPassed(state: StudentAcademicState, courseId: string, minGrade: string | null): boolean {
+  private isPassed(state: StudentAcademicState, courseId: string, minGrade: string | null, passingThreshold: Decimal): boolean {
     const record = state.passed.get(courseId);
     if (!record) return false;
-    const threshold = minGrade ? new Decimal(minGrade) : this.passingThreshold();
+    const threshold = minGrade ? new Decimal(minGrade) : passingThreshold;
     return record.bestValue.lessThanOrEqualTo(threshold);
   }
 
@@ -131,6 +133,7 @@ export class EligibilityService {
     requestedCourseIds: Set<string> = new Set(),
   ): Promise<EligibilityResult> {
     const state = await this.loadState(studentId, termId);
+    const passingThreshold = await this.passingThreshold();
 
     const curriculumEntries = await this.prisma.curriculumCourse.findMany({
       where: { curriculumVersionId: state.curriculumVersionId },
@@ -154,7 +157,7 @@ export class EligibilityService {
 
     for (const entry of curriculumEntries) {
       const courseId = entry.courseId;
-      if (this.isPassed(state, courseId, null)) {
+      if (this.isPassed(state, courseId, null, passingThreshold)) {
         alreadyPassed.push({
           courseId,
           code: entry.course.code,
@@ -171,7 +174,7 @@ export class EligibilityService {
       for (const edge of incoming) {
         const requiredCourse = courseById.get(edge.requiredCourseId);
         if (edge.type === 'PREREQUISITE') {
-          if (!this.isPassed(state, edge.requiredCourseId, null)) {
+          if (!this.isPassed(state, edge.requiredCourseId, null, passingThreshold)) {
             missingPrerequisites.push({
               courseId: edge.requiredCourseId,
               code: requiredCourse?.code ?? edge.requiredCourseId,
@@ -181,7 +184,7 @@ export class EligibilityService {
           }
         } else {
           const satisfied =
-            this.isPassed(state, edge.requiredCourseId, null) ||
+            this.isPassed(state, edge.requiredCourseId, null, passingThreshold) ||
             state.enrolledCourseIds.has(edge.requiredCourseId) ||
             requestedCourseIds.has(edge.requiredCourseId) ||
             (edge.type === 'COREQUISITE' && state.waitlistedCourseIds.has(edge.requiredCourseId));
@@ -255,6 +258,7 @@ export class EligibilityService {
    */
   async assertReservationEligible(studentId: string, termId: string, requestedCourseIds: Set<string>): Promise<StudentAcademicState> {
     const state = await this.loadState(studentId, termId);
+    const passingThreshold = await this.passingThreshold();
     const requested = [...requestedCourseIds];
 
     const prerequisiteViolations: Array<{ courseId: string; missing: string[] }> = [];
@@ -267,10 +271,10 @@ export class EligibilityService {
 
       for (const edge of incoming) {
         if (edge.type === 'PREREQUISITE') {
-          if (!this.isPassed(state, edge.requiredCourseId, null)) missingPrereq.push(edge.requiredCourseId);
+          if (!this.isPassed(state, edge.requiredCourseId, null, passingThreshold)) missingPrereq.push(edge.requiredCourseId);
         } else {
           const satisfied =
-            this.isPassed(state, edge.requiredCourseId, null) ||
+            this.isPassed(state, edge.requiredCourseId, null, passingThreshold) ||
             state.enrolledCourseIds.has(edge.requiredCourseId) ||
             requestedCourseIds.has(edge.requiredCourseId) ||
             (edge.type === 'COREQUISITE' && state.waitlistedCourseIds.has(edge.requiredCourseId));

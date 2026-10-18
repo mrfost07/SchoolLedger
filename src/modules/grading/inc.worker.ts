@@ -1,10 +1,10 @@
 import { Decimal } from 'decimal.js';
 import type { GradeLedgerEntry, PrismaClient } from '@prisma/client';
-import type { Env } from '../../config/env';
 import type { Clock } from '../../core/time/clock';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
 import { runWithTenant } from '../../core/tenant/context';
 import type { AuditService } from '../audit/audit.service';
+import type { SchoolService } from '../school/school.service';
 import { gradeEntryHash } from './ledger-hash';
 import { validateMark } from './state-machine';
 
@@ -24,7 +24,7 @@ export class IncLifecycleService {
     private readonly prisma: PrismaClient,
     private readonly audit: AuditService,
     private readonly clock: Clock,
-    private readonly config: Pick<Env, 'incDefaultGrade'>,
+    private readonly school: SchoolService,
   ) {}
 
   async complete(actorId: string, entryId: string, value: string): Promise<{ entry: GradeLedgerEntry; supersededId: string }> {
@@ -92,14 +92,15 @@ export class IncLifecycleService {
     for (const entry of expired) {
       // The scan is cross-school (system frame); each conversion runs in the
       // owning school's frame so audit events land in that school's chain.
-      const converted = await runWithTenant(entry.schoolId, () =>
-        this.prisma.$transaction(async (tx) => {
+      const converted = await runWithTenant(entry.schoolId, async () => {
+        const policy = await this.school.resolvePolicy();
+        return this.prisma.$transaction(async (tx) => {
         const fresh = await tx.gradeLedgerEntry.findUnique({ where: { id: entry.id } });
         if (!fresh || fresh.status !== 'POSTED' || !fresh.isInc) return null;
 
         await tx.gradeLedgerEntry.update({ where: { id: fresh.id }, data: { status: 'SUPERSEDED' } });
 
-        const defaultGrade = new Decimal(this.config.incDefaultGrade).toFixed(2);
+        const defaultGrade = new Decimal(policy.incDefaultGrade).toFixed(2);
         const entryHash = gradeEntryHash({
           prevHash: fresh.entryHash,
           studentId: fresh.studentId,
@@ -139,8 +140,8 @@ export class IncLifecycleService {
           },
         });
         return { entryId: fresh.id, studentId: fresh.studentId, courseId: fresh.courseId, newEntryId: replacement.id };
-      }),
-      );
+      });
+    });
       if (converted) report.converted.push(converted);
     }
     return report;

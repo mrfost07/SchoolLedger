@@ -34,6 +34,8 @@ import { registerEnrollmentRoutes } from './modules/enrollment/enrollment.routes
 import { DocumentsService } from './modules/documents/documents.service';
 import { DocumentRenderWorker } from './modules/documents/documents.worker';
 import { registerDocumentRoutes } from './modules/documents/documents.routes';
+import { SchoolService } from './modules/school/school.service';
+import { registerSchoolRoutes } from './modules/school/school.routes';
 
 export interface ComposedServices {
   audit: AuditService;
@@ -51,6 +53,7 @@ export interface ComposedServices {
   waitlist: WaitlistPromotionService;
   documents: DocumentsService;
   documentWorker: DocumentRenderWorker;
+  school: SchoolService;
   queues: Queues | null;
   dispatcher: BackgroundDispatcher;
   close(): Promise<void>;
@@ -70,16 +73,17 @@ export function composeServices(ctx: AppContext, options: ComposeOptions = {}): 
   const { prisma, redis, storage, clock, config, logger } = ctx;
 
   const audit = new AuditService(prisma);
+  const school = new SchoolService(prisma, audit, config);
   const holds = new HoldsService(prisma, audit);
   const sessions = redis ? new SessionService(redis, config) : null;
   const iam = new IamService(prisma, sessions, audit, config);
   const sectionAccess = new SectionAccessService(prisma, clock);
   const academics = new AcademicsService(prisma, audit);
-  const grading = new GradingService(prisma, audit, sectionAccess, clock, config);
-  const rectifications = new RectificationService(prisma, audit, clock, config);
-  const inc = new IncLifecycleService(prisma, audit, clock, config);
-  const eligibility = new EligibilityService(prisma, config);
-  const fees = new FeesService(prisma, audit, config);
+  const grading = new GradingService(prisma, audit, sectionAccess, clock, school);
+  const rectifications = new RectificationService(prisma, audit, clock, school);
+  const inc = new IncLifecycleService(prisma, audit, clock, school);
+  const eligibility = new EligibilityService(prisma, school);
+  const fees = new FeesService(prisma, audit, school);
   const gate: CapacityGate = redis ? new RedisCapacityGate(redis) : new DatabaseCapacityGate(prisma);
   const waitlist = new WaitlistPromotionService(prisma, audit, holds, eligibility, gate, fees, clock);
 
@@ -95,7 +99,7 @@ export function composeServices(ctx: AppContext, options: ComposeOptions = {}): 
         },
       });
 
-  const enrollment = new EnrollmentService(prisma, audit, holds, eligibility, gate, fees, clock, config, dispatcher);
+  const enrollment = new EnrollmentService(prisma, audit, holds, eligibility, gate, fees, clock, school, dispatcher);
   const documents = new DocumentsService(prisma, audit, holds, grading, storage, dispatcher, clock, config);
   const documentWorker = new DocumentRenderWorker(documents, storage, logger);
 
@@ -115,6 +119,7 @@ export function composeServices(ctx: AppContext, options: ComposeOptions = {}): 
     waitlist,
     documents,
     documentWorker,
+    school,
     queues,
     dispatcher,
     close: async () => {
@@ -152,6 +157,7 @@ export function buildApp(ctx: AppContext, services: ComposedServices): AppServer
         { name: 'Enrollment', description: 'Eligibility, reservation, waitlists, fees' },
         { name: 'Grading', description: 'Grade sheets, immutable ledger, GWA, rectification, INC' },
         { name: 'Documents', description: 'Document issuance, signed PDFs, verification' },
+        { name: 'School', description: 'School profile, branding and academic policy' },
       ],
     },
   });
@@ -280,6 +286,7 @@ export function buildApp(ctx: AppContext, services: ComposedServices): AppServer
       sectionAccess: services.sectionAccess,
     });
     registerDocumentRoutes(routes, ctx, services.documents);
+    registerSchoolRoutes(routes, ctx, services.school);
   });
 
   return app;

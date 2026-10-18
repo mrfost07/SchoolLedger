@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import type { Enrollment, EnrollmentItem, PrismaClient, TuitionAssessment } from '@prisma/client';
-import type { Env } from '../../config/env';
+import type { SchoolService } from '../school/school.service';
 import type { BackgroundDispatcher } from '../../context';
 import type { Clock } from '../../core/time/clock';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
@@ -56,7 +56,7 @@ export class EnrollmentService {
     private readonly gate: CapacityGate,
     private readonly fees: FeesService,
     private readonly clock: Clock,
-    private readonly config: Pick<Env, 'maxAcademicUnits'>,
+    private readonly school: SchoolService,
     private readonly dispatcher: BackgroundDispatcher,
   ) {}
 
@@ -202,10 +202,11 @@ export class EnrollmentService {
     const state = await this.eligibility.assertReservationEligible(studentId, input.termId, requestedCourseIds);
 
     // Already-passed guard.
+    const passingThreshold = await this.eligibility.passingThreshold();
     for (const section of sections) {
       if (state.passed.has(section.courseId)) {
         const best = state.passed.get(section.courseId)!;
-        if (best.bestValue.lessThanOrEqualTo(this.eligibility.passingThreshold())) {
+        if (best.bestValue.lessThanOrEqualTo(passingThreshold)) {
           throw new AppError(ErrorCodes.CONFLICT, `Course ${section.course.code} is already passed (${best.bestValue.toFixed(2)}).`, {
             meta: { courseId: section.courseId, bestValue: best.bestValue.toFixed(2) },
           });
@@ -216,11 +217,12 @@ export class EnrollmentService {
     // Max academic load (BSL-206).
     const requestedUnits = sections.reduce((sum, section) => sum + section.course.lectureUnits + section.course.labUnits, 0);
     const currentUnits = await this.activeUnits(studentId, input.termId);
-    if (!input.allowOverload && currentUnits + requestedUnits > this.config.maxAcademicUnits) {
+    const policy = await this.school.resolvePolicy();
+    if (!input.allowOverload && currentUnits + requestedUnits > policy.maxAcademicUnits) {
       throw new AppError(
         ErrorCodes.MAX_UNITS_EXCEEDED,
-        `Reservation would exceed the ${this.config.maxAcademicUnits}-unit academic load limit (current ${currentUnits} + requested ${requestedUnits}).`,
-        { meta: { currentUnits, requestedUnits, limit: this.config.maxAcademicUnits } },
+        `Reservation would exceed the ${policy.maxAcademicUnits}-unit academic load limit (current ${currentUnits} + requested ${requestedUnits}).`,
+        { meta: { currentUnits, requestedUnits, limit: policy.maxAcademicUnits } },
       );
     }
 
@@ -296,6 +298,7 @@ export class EnrollmentService {
   ): Promise<ReserveResult> {
     const ids = sections.map((section) => section.id).sort();
     const now = this.clock.now();
+    const policy = await this.school.resolvePolicy();
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Per-student serialization: closes the max-units and duplicate-item TOCTOU
@@ -317,11 +320,11 @@ export class EnrollmentService {
       const committedUnits = activeItems
         .filter((item) => item.status === 'ENROLLED')
         .reduce((sum, item) => sum + Number(item.unitsAtReservation.toString()), 0);
-      if (!input.allowOverload && committedUnits + requestedUnits > this.config.maxAcademicUnits) {
+      if (!input.allowOverload && committedUnits + requestedUnits > policy.maxAcademicUnits) {
         throw new AppError(
           ErrorCodes.MAX_UNITS_EXCEEDED,
-          `Reservation would exceed the ${this.config.maxAcademicUnits}-unit academic load limit (current ${committedUnits} + requested ${requestedUnits}).`,
-          { meta: { currentUnits: committedUnits, requestedUnits, limit: this.config.maxAcademicUnits } },
+          `Reservation would exceed the ${policy.maxAcademicUnits}-unit academic load limit (current ${committedUnits} + requested ${requestedUnits}).`,
+          { meta: { currentUnits: committedUnits, requestedUnits, limit: policy.maxAcademicUnits } },
         );
       }
 

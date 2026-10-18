@@ -1,6 +1,6 @@
 import { Decimal } from 'decimal.js';
 import type { PrismaClient, TuitionAssessment } from '@prisma/client';
-import type { Env } from '../../config/env';
+import type { SchoolService } from '../school/school.service';
 import { canonicalJson, sha256Hex } from '../../core/crypto/hash';
 import { AppError, ErrorCodes } from '../../core/errors/taxonomy';
 import { requireTenantSchoolId } from '../../core/tenant/context';
@@ -41,7 +41,7 @@ export class FeesService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly audit: AuditService,
-    private readonly config: Pick<Env, 'currency'>,
+    private readonly school: SchoolService,
   ) {}
 
   private moneyStr(value: Decimal): string {
@@ -49,6 +49,7 @@ export class FeesService {
   }
 
   async computeBreakdown(enrollmentId: string): Promise<{ breakdown: FeeBreakdown; snapshotHash: string }> {
+    const policy = await this.school.resolvePolicy();
     const enrollment = await this.prisma.enrollment.findUnique({
       where: { id: enrollmentId },
       include: {
@@ -160,7 +161,7 @@ export class FeesService {
     }
 
     const breakdown: FeeBreakdown = {
-      currency: this.config.currency,
+      currency: policy.currency,
       units: { lecture: lectureUnits, lab: labUnits, total: lectureUnits + labUnits },
       lineItems,
       discounts,

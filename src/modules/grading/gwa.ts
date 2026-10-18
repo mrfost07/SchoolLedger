@@ -94,6 +94,7 @@ export interface StandingConfig {
   deansListerMinUnits: number;
   deansListerMaxMark: string;
   probationMaxGwa: string;
+  passingGradeMax: string;
   disqualificationStreak: number;
 }
 
@@ -102,6 +103,7 @@ export const DEFAULT_STANDING_CONFIG: StandingConfig = {
   deansListerMinUnits: 15,
   deansListerMaxMark: '2.00',
   probationMaxGwa: '3.00',
+  passingGradeMax: '3.00',
   disqualificationStreak: 2,
 };
 
@@ -115,7 +117,7 @@ export interface StandingInput {
 }
 
 export function computeStanding(input: StandingInput, config: StandingConfig = DEFAULT_STANDING_CONFIG): AcademicStanding {
-  const hasFailures = input.termMarks.some((mark) => new ACADEMIC_DECIMAL(mark).greaterThan(3.0));
+  const hasFailures = input.termMarks.some((mark) => new ACADEMIC_DECIMAL(mark).greaterThan(new ACADEMIC_DECIMAL(config.passingGradeMax)));
   const outstandingFailures = hasFailures;
 
   if (input.cumulativeGwa !== null && input.cumulativeGwa.greaterThan(new ACADEMIC_DECIMAL(config.probationMaxGwa))) {

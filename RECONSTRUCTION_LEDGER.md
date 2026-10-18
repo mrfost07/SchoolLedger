@@ -227,3 +227,22 @@ walkthrough green with School #1 = current seed.
 **Next:** Phase 1b — school configuration surface (school profile & policy management,
 branding) per the program plan; the 84-check walkthrough remains the regression gate with
 School #1 = current seed.
+
+---
+
+## 12. Phase 1b — school configuration surface (as-built)
+
+| Item | Artifact | Verification |
+| --- | --- | --- |
+| Config schema | `prisma/migrations/0004_school_profile_and_policy` — `schools` += `address`, `contactEmail`, `contactPhone`, `website`, `logoUrl`, `brandColor` (nullable); `school_policies` += `incCompletionDays` (default 365), `honorsSummaMax` 1.20 / `honorsMagnaMax` 1.45 / `honorsCumLaudeMax` 1.75 (`DECIMAL(3,2)`) | applied on the dev database; Prisma client regenerated; schema/seed updated in the same change |
+| School module | `src/modules/school/school.service.ts` + `school.routes.ts` — `GET /api/v1/school` (`school.view.self`; granted to all HE templates) returns profile + effective policy + `policySource`; `PATCH /api/v1/school` and `PATCH /api/v1/school/policies` (`school.manage`; ADMIN only). Profile/policy writes are audited (`school.profile.updated`, `school.policy.updated`) inside the same transaction as the mutation | OpenAPI exposes both paths on the running dev backend; `school-config.spec.ts` exercises read/write, validation (403 for students), audit rows |
+| Policy as single source | `SchoolService.resolvePolicy()` — the `SchoolPolicy` row when present, else environment defaults (legacy parity). Consumers rerouted: eligibility (`passingThreshold`, incl. `computeStanding` failure/probation checks now policy-driven via `StandingConfig.passingGradeMax`), enrollment (`maxAcademicUnits` in both reserve paths + already-passed guard), fees (`currency`), grading (INC window, honors thresholds, deans-lister GWA), INC sweep (`incDefaultGrade`, resolved per school inside its tenant frame), rectification (INC window) | lowered `maxAcademicUnits` → 422 `MAX_UNITS_EXCEEDED` with `meta.limit`; `currency: 'USD'` frozen into the immutable assessment snapshot; both proven in `school-config.spec.ts` |
+| Permission registry | `+school.view.self` (all six templates), `+school.manage` (ADMIN via all-codes) — 50 codes / 6 HE templates seeded | `onRoute` coverage hook green; seed prints 50 codes |
+| Seed divergence | School #1 `MAIN` full profile + default policy; School #2 `NORTH` profile + `maxAcademicUnits: 24`, `incCompletionDays: 180` — demonstrates per-school policy divergence | `dev-reset` + seed + 84-check walkthrough green; per-school isolation asserted in the spec (MAIN untouched by NORTH edits, separate audit chain) |
+| Tests | `tests/integration/school-config.spec.ts` — 7 tests: student read with env-default policy, student write 403, admin profile+audit, policy row creation+audit, policy-driven overload block/restore, currency snapshot, per-school isolation | full suite 15 files / **103 tests** green; `tsc --noEmit` clean |
+
+**Next:** Phase 2 — identity & access management (user invitations/lifecycle,
+per-school role-template overrides as data for the permission registry, membership
+administration) per the program plan; the 84-check walkthrough remains the regression
+gate with School #1 = current seed. Branding fields are storage-first: the admin console
+UI that edits them lands with the console phase.

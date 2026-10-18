@@ -76,6 +76,10 @@ export const PERMISSIONS: readonly PermissionSpec[] = [
   // audit
   { code: 'audit.read', module: 'audit', description: 'Read audit logs' },
   { code: 'audit.verify', module: 'audit', description: 'Verify audit chain integrity' },
+
+  // school
+  { code: 'school.view.self', module: 'school', description: 'Read own school profile, branding and academic policy' },
+  { code: 'school.manage', module: 'school', description: 'Update school profile, branding and academic policy' },
 ] as const;
 
 export interface RoleTemplateSpec {
@@ -97,6 +101,7 @@ const STUDENT_PERMISSIONS = [
   'documents.download.self',
   'iam.self.manage',
   'iam.holds.view',
+  'school.view.self',
 ] as const;
 
 const INSTRUCTOR_PERMISSIONS = [
@@ -108,6 +113,7 @@ const INSTRUCTOR_PERMISSIONS = [
   'grading.rectification.request',
   'enrollment.view.any',
   'iam.self.manage',
+  'school.view.self',
 ] as const;
 
 const PROGRAM_CHAIR_PERMISSIONS = [
@@ -118,6 +124,7 @@ const PROGRAM_CHAIR_PERMISSIONS = [
   'grading.rectification.endorse',
   'enrollment.view.any',
   'iam.self.manage',
+  'school.view.self',
 ] as const;
 
 const REGISTRAR_PERMISSIONS = [
@@ -149,6 +156,7 @@ const REGISTRAR_PERMISSIONS = [
   'iam.users.list',
   'iam.holds.view',
   'iam.students.view',
+  'school.view.self',
 ] as const;
 
 const CASHIER_PERMISSIONS = [
@@ -160,6 +168,7 @@ const CASHIER_PERMISSIONS = [
   'iam.holds.manage',
   'iam.holds.view',
   'iam.students.view',
+  'school.view.self',
 ] as const;
 
 const ADMIN_PERMISSIONS = PERMISSIONS.map((permission) => permission.code);

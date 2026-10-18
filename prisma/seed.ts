@@ -49,16 +49,29 @@ async function grantMembership(prisma: PrismaClient, schoolId: string, userId: s
   }
 }
 
-async function upsertSchool(prisma: PrismaClient, id: string, code: string, name: string): Promise<void> {
+interface SchoolSeedOptions {
+  address?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  brandColor?: string;
+  policy?: {
+    maxAcademicUnits?: number;
+    incCompletionDays?: number;
+  };
+}
+
+async function upsertSchool(prisma: PrismaClient, id: string, code: string, name: string, options: SchoolSeedOptions = {}): Promise<void> {
+  const { policy, ...profile } = options;
   await prisma.school.upsert({
     where: { id },
-    update: { code, name },
-    create: { id, code, name },
+    update: { code, name, ...profile },
+    create: { id, code, name, ...profile },
   });
   await prisma.schoolPolicy.upsert({
     where: { schoolId: id },
-    update: {},
-    create: { schoolId: id },
+    update: policy ?? {},
+    create: { schoolId: id, ...(policy ?? {}) },
   });
 }
 
@@ -92,8 +105,21 @@ async function main(): Promise<void> {
   const prisma = new PrismaClient({ datasources: { db: { url: config.databaseUrl } } });
   const passwordHash = await hashPassword(PASSWORD);
 
-  await upsertSchool(prisma, MAIN_SCHOOL_ID, 'MAIN', 'Main Campus');
-  await upsertSchool(prisma, NORTH_SCHOOL_ID, 'NORTH', 'North Campus');
+  await upsertSchool(prisma, MAIN_SCHOOL_ID, 'MAIN', 'Main Campus', {
+    address: '123 Rizal Avenue, Manila, Philippines',
+    contactEmail: 'registrar@main.portal.test',
+    contactPhone: '+63 2 8123 4567',
+    website: 'https://main.portal.test',
+    brandColor: '#1d4ed8',
+  });
+  await upsertSchool(prisma, NORTH_SCHOOL_ID, 'NORTH', 'North Campus', {
+    address: '45 Katipunan Road, Quezon City, Philippines',
+    contactEmail: 'registrar@north.portal.test',
+    contactPhone: '+63 2 8987 6543',
+    website: 'https://north.portal.test',
+    brandColor: '#0f766e',
+    policy: { maxAcademicUnits: 24, incCompletionDays: 180 },
+  });
   await seedPermissionRegistry(prisma);
 
   // ── School 1 (MAIN): full dataset ─────────────────────────────────────────

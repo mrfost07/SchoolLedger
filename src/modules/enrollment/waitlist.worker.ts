@@ -110,7 +110,7 @@ export class WaitlistPromotionService {
 
     const state = await this.eligibility.loadState(studentId, termId);
     const passed = state.passed.get(candidate.section.courseId);
-    if (passed && passed.bestValue.lessThanOrEqualTo(this.eligibility.passingThreshold())) {
+    if (passed && passed.bestValue.lessThanOrEqualTo(await this.eligibility.passingThreshold())) {
       return 'Course already passed';
     }
 
