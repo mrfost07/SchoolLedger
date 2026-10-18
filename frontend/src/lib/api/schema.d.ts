@@ -17292,6 +17292,802 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/school": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current school profile, branding and effective academic policy. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            school: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                status: "ACTIVE" | "SUSPENDED";
+                                address: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                                website: string | null;
+                                logoUrl: string | null;
+                                brandColor: string | null;
+                            };
+                            policy: {
+                                maxAcademicUnits: number;
+                                passingGradeMax: string;
+                                incDefaultGrade: string;
+                                incCompletionDays: number;
+                                deansListerMaxGwa: string;
+                                honorsSummaMax: string;
+                                honorsMagnaMax: string;
+                                honorsCumLaudeMax: string;
+                                currency: string;
+                            };
+                            policySource: "school" | "env";
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update school profile and branding (ADMIN). */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        address?: string | null;
+                        contactEmail?: string | null;
+                        contactPhone?: string | null;
+                        website?: string | null;
+                        logoUrl?: string | null;
+                        brandColor?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            school: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                status: "ACTIVE" | "SUSPENDED";
+                                address: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                                website: string | null;
+                                logoUrl: string | null;
+                                brandColor: string | null;
+                            };
+                            policy: {
+                                maxAcademicUnits: number;
+                                passingGradeMax: string;
+                                incDefaultGrade: string;
+                                incCompletionDays: number;
+                                deansListerMaxGwa: string;
+                                honorsSummaMax: string;
+                                honorsMagnaMax: string;
+                                honorsCumLaudeMax: string;
+                                currency: string;
+                            };
+                            policySource: "school" | "env";
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/school/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update academic policy (unit load limit, grade thresholds, INC window, currency) (ADMIN). */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        maxAcademicUnits?: number;
+                        passingGradeMax?: string;
+                        incDefaultGrade?: string;
+                        incCompletionDays?: number;
+                        deansListerMaxGwa?: string;
+                        honorsSummaMax?: string;
+                        honorsMagnaMax?: string;
+                        honorsCumLaudeMax?: string;
+                        currency?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            school: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                status: "ACTIVE" | "SUSPENDED";
+                                address: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                                website: string | null;
+                                logoUrl: string | null;
+                                brandColor: string | null;
+                            };
+                            policy: {
+                                maxAcademicUnits: number;
+                                passingGradeMax: string;
+                                incDefaultGrade: string;
+                                incCompletionDays: number;
+                                deansListerMaxGwa: string;
+                                honorsSummaMax: string;
+                                honorsMagnaMax: string;
+                                honorsCumLaudeMax: string;
+                                currency: string;
+                            };
+                            policySource: "school" | "env";
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+                /** @description RFC 7807 problem details */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            type: string;
+                            title: string;
+                            status: number;
+                            detail: string;
+                            instance: string;
+                            code: string;
+                            errors: {
+                                path: string;
+                                message: string;
+                            }[];
+                            meta?: {
+                                [key: string]: unknown;
+                            };
+                            requestId?: string;
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
