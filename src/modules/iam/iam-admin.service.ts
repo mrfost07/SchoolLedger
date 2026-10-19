@@ -254,6 +254,13 @@ export class IamAdminService {
     });
     if (!membership) throw new AppError(ErrorCodes.NOT_FOUND, 'This user has no membership in your school.');
     const previous = membership.assignments.map((assignment) => assignment.roleCode);
+    // Total (all-school) membership count must be read in system context: the
+    // tenant extension would scope it to the caller's school, misclassifying
+    // multi-school users as single-membership and corrupting the User.roles
+    // mirror (ADR-0002 transitional model).
+    const totalMemberships = await runWithSystem(() =>
+      this.prisma.membership.count({ where: { userId: targetUserId } }),
+    );
 
     await this.prisma.$transaction(async (tx) => {
       await tx.roleAssignment.deleteMany({ where: { membershipId: membership.id } });
@@ -263,8 +270,7 @@ export class IamAdminService {
         });
       }
       // Transitional mirror (ADR-0002): single-membership users keep `User.roles` in sync.
-      const membershipCount = await tx.membership.count({ where: { userId: targetUserId } });
-      if (membershipCount === 1) {
+      if (totalMemberships === 1) {
         await tx.user.update({ where: { id: targetUserId }, data: { roles: roles as PrismaRole[] } });
       }
       await this.audit.append(tx, {

@@ -5,22 +5,32 @@ import { createUser, TEST_SCHOOL2_ID, TEST_SCHOOL_ID } from '../helpers/fixtures
 describe('IAM lifecycle & role-template overrides (Phase 2)', () => {
   let test: TestApp;
   let adminId: string;
+  let admin2Id: string;
   let registrarId: string;
   let instructorId: string;
   let outsiderId: string;
   let cashierId: string;
   let cashier2Id: string;
+  let multiId: string;
   let clockAtStart: Date;
 
   beforeAll(async () => {
     test = await createTestApp();
     clockAtStart = test.clock.now();
     adminId = (await createUser(test.prisma, { email: 'iam.admin@test.dev', roles: ['ADMIN'] })).id;
+    admin2Id = (await createUser(test.prisma, { email: 'iam.admin2@test.dev', roles: ['ADMIN'], schoolId: TEST_SCHOOL2_ID })).id;
     registrarId = (await createUser(test.prisma, { email: 'iam.registrar@test.dev', roles: ['REGISTRAR'] })).id;
     instructorId = (await createUser(test.prisma, { email: 'iam.inst@test.dev', roles: ['INSTRUCTOR'] })).id;
     cashierId = (await createUser(test.prisma, { email: 'iam.cashier@test.dev', roles: ['CASHIER'] })).id;
     outsiderId = (await createUser(test.prisma, { email: 'iam.outsider@test.dev', roles: ['INSTRUCTOR'], schoolId: TEST_SCHOOL2_ID })).id;
     cashier2Id = (await createUser(test.prisma, { email: 'iam.cashier2@test.dev', roles: ['CASHIER'], schoolId: TEST_SCHOOL2_ID })).id;
+    multiId = (await createUser(test.prisma, { email: 'iam.multi@test.dev', roles: ['INSTRUCTOR'] })).id;
+    const secondMembership = await test.prisma.membership.create({
+      data: { schoolId: TEST_SCHOOL2_ID, userId: multiId, status: 'ACTIVE' },
+    });
+    await test.prisma.roleAssignment.create({
+      data: { schoolId: TEST_SCHOOL2_ID, membershipId: secondMembership.id, roleCode: 'INSTRUCTOR' },
+    });
   });
 
   afterAll(async () => {
@@ -171,7 +181,44 @@ describe('IAM lifecycle & role-template overrides (Phase 2)', () => {
     test.clock.set(clockAtStart);
   });
 
+  it('rejects short passwords without consuming the invitation', async () => {
+    const created = await createInvitation(adminToken(), {
+      email: 'weak.pass@test.dev',
+      firstName: 'Weak',
+      lastName: 'Pass',
+      roles: ['CASHIER'],
+    });
+    expect(created.statusCode).toBe(201);
+
+    const rejected = await accept(created.json().token, 'short');
+    expect(rejected.statusCode).toBe(400);
+    expect(rejected.json().code).toBe('VALIDATION_FAILED');
+
+    const row = await test.prisma.invitation.findUnique({ where: { id: created.json().id } });
+    expect(row!.status).toBe('PENDING');
+
+    const ok = await accept(created.json().token);
+    expect(ok.statusCode).toBe(200);
+  });
+
+  it('invitations are isolated per school', async () => {
+    const list2 = await test.app.inject({
+      method: 'GET',
+      url: '/api/v1/iam/invitations',
+      headers: test.auth(test.mintToken(admin2Id, ['ADMIN'], { schoolId: TEST_SCHOOL2_ID })),
+    });
+    expect(list2.statusCode).toBe(200);
+    expect(list2.json()).toHaveLength(0);
+
+    const list1 = await test.app.inject({ method: 'GET', url: '/api/v1/iam/invitations', headers: adminToken() });
+    expect(list1.statusCode).toBe(200);
+    expect(list1.json().length).toBeGreaterThan(0);
+  });
+
   it('membership suspension blocks login and activation restores it', async () => {
+    const pre = await login('iam.inst@test.dev', 'Password123!');
+    expect(pre.statusCode).toBe(200);
+
     const suspended = await test.app.inject({
       method: 'POST',
       url: `/api/v1/iam/users/${instructorId}/suspend`,
@@ -184,6 +231,14 @@ describe('IAM lifecycle & role-template overrides (Phase 2)', () => {
     const blocked = await login('iam.inst@test.dev', 'Password123!');
     expect(blocked.statusCode).toBe(403);
     expect(blocked.json().code).toBe('AUTH_NO_MEMBERSHIP');
+
+    const refreshBlocked = await test.app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: pre.json().refreshToken },
+    });
+    expect(refreshBlocked.statusCode).toBe(403);
+    expect(refreshBlocked.json().code).toBe('AUTH_NO_MEMBERSHIP');
 
     const double = await test.app.inject({
       method: 'POST',
@@ -262,6 +317,29 @@ describe('IAM lifecycle & role-template overrides (Phase 2)', () => {
 
     const audits = await test.prisma.auditLog.findMany({ where: { schoolId: TEST_SCHOOL_ID, action: 'iam.user.roles_updated' } });
     expect(audits).toHaveLength(1);
+  });
+
+  it('role updates leave the User.roles mirror alone for multi-school users', async () => {
+    const changed = await test.app.inject({
+      method: 'PUT',
+      url: `/api/v1/iam/users/${multiId}/roles`,
+      headers: adminToken(),
+      payload: { roles: ['PROGRAM_CHAIR'] },
+    });
+    expect(changed.statusCode).toBe(200);
+
+    const schoolOne = await test.prisma.roleAssignment.findMany({
+      where: { membership: { userId: multiId, schoolId: TEST_SCHOOL_ID } },
+    });
+    expect(schoolOne.map((row) => row.roleCode)).toEqual(['PROGRAM_CHAIR']);
+
+    const schoolTwo = await test.prisma.roleAssignment.findMany({
+      where: { membership: { userId: multiId, schoolId: TEST_SCHOOL2_ID } },
+    });
+    expect(schoolTwo.map((row) => row.roleCode)).toEqual(['INSTRUCTOR']);
+
+    const user = await test.prisma.user.findUnique({ where: { id: multiId } });
+    expect(user!.roles).toEqual(['INSTRUCTOR']);
   });
 
   it('school template overrides change enforcement and revert cleanly', async () => {
